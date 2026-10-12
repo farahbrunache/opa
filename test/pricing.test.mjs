@@ -13,6 +13,7 @@ const desk = (await import('../api/desk.js')).default;
 const costsApi = (await import('../api/costs.js')).default;
 const drafts = await import('../lib/desk-drafts.js');
 const pricing = await import('../lib/pricing.js');
+const sessions = await import('../lib/sessions.js');
 const { draftCost } = await import('../lib/costs.js');
 
 await db.ensureSchema();
@@ -64,7 +65,7 @@ await tagged`insert into drafts (order_id, slot, model, job_id, kind, seconds, c
              values (${id}, 'A', 'Invented Luna', 'pj-1', 'reply', 30, now() - interval '2 days', now() - interval '2 days' + interval '30 seconds')`;
 await tagged`insert into step_times (order_id, step, seconds, at) values (${id}, 'reply', 180, now() - interval '2 days' + interval '4 minutes')`;
 await tagged`insert into held_sessions (case_id, rate, used_at) values (${caseId}, 'standard', now() - interval '1 day')`;
-delete process.env.OWNER_HOUR_DOLLARS_LOW;
+const save = (payload) => ask(costsApi, 'POST', '/api/costs?action=prices', payload);
 let price = await pricing.priceNow(0.02);
 check('with no rate set there is no suggestion', price.rates === null && price.suggested === null, price);
 check('one working client, 33 minutes, sixty cents of AI, one session used',
@@ -73,23 +74,20 @@ check('one working client, 33 minutes, sixty cents of AI, one session used',
 const reply = price.buttons.find((b) => b.family === 'reply');
 check('the reply button: one press, its cost, and your three minutes after it',
   reply.presses === 1 && Math.abs(reply.cost - 0.6) < 1e-9 && reply.seconds === 30 && reply.review === 180, reply);
-process.env.OWNER_HOUR_DOLLARS_LOW = '100';
-process.env.OWNER_HOUR_DOLLARS_HIGH = '200';
-process.env.PAYMENT_FEE_PERCENT = '0';
-process.env.SESSION_STANDARD_DOLLARS = '100';
-process.env.SESSION_ACCESS_DOLLARS = '25';
-process.env.ACCESS_SESSIONS_A_MONTH = '20';
+check('prices save from Money', (await save({ hourLow: '200', hourHigh: '100', standard: '100', access: '25', aMonth: '20' })).status === 200);
 price = await pricing.priceNow(0.02);
 check('a session is worth its minutes at your rate plus the AI, rounded up to five',
   price.suggested.low === 60 && price.suggested.high === 115, price.suggested);
 check('the posted standard rate says what it leaves at each end',
   Math.abs(price.posted.standard.leaves.high - (100 - 0.6 - 55)) < 1e-9
   && Math.abs(price.posted.standard.leaves.low - (100 - 0.6 - 110)) < 1e-9, price.posted);
-process.env.PAYMENT_FEE_PERCENT = '10';
-price = await pricing.priceNow(0.02);
-check('a payment fee raises the price to cover it', price.suggested.low === 65, price.suggested);
-check('Money carries it', (await ask(costsApi, 'GET', '/api/costs?action=now')).out.price.suggested.low === 65);
-check('the rate is a pair, low then high', JSON.stringify(pricing.hourRates()) === JSON.stringify({ low: 100, high: 200 }));
+check('Money carries the suggestion and what was saved',
+  (await ask(costsApi, 'GET', '/api/costs?action=now')).out.price.suggested.low === 60
+  && (await ask(costsApi, 'GET', '/api/costs?action=now')).out.price.set.standard === '100');
+check('emptying a field clears it', (await save({ hourLow: '', hourHigh: '200' })).status === 200
+  && (await pricing.hourRates()) === null && (await sessions.ratesNow()) === null);
+await save({ hourLow: '200', hourHigh: '100', standard: '100', access: '25', aMonth: '20' });
+check('the rate is a pair, low then high, whichever way it was typed', JSON.stringify(await pricing.hourRates()) === JSON.stringify({ low: 100, high: 200 }));
 check('a demo press is left out', price.buttons.reduce((n, b) => n + b.presses, 0) === 1);
 
 const failures = failureCount();

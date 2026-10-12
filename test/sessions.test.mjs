@@ -9,6 +9,7 @@ const client = (await import('../api/client.js')).default;
 const submit = (await import('../api/submit.js')).default;
 const payments = (await import('../api/payments.js')).default;
 const sessions = await import('../lib/sessions.js');
+const costsApi = (await import('../api/costs.js')).default;
 
 await db.ensureSchema();
 
@@ -41,17 +42,19 @@ async function linkedGo(reference, account) {
 
 console.log('');
 console.log('the rates are settings');
-delete process.env.SESSION_STANDARD_DOLLARS;
-check('with nothing set there are no rates', sessions.ratesNow() === null);
+check('with nothing set there are no rates', (await sessions.ratesNow()) === null);
 const me = await linkedGo('RSESS000001', 'acct-sess-1');
 check('and the client is told nothing is on sale yet',
   (await ask(client, 'acct-sess-1', 'GET', '/api/client?action=sessions')).out.rates === null);
 check('a request is refused the same way',
   (await ask(client, 'acct-sess-1', 'POST', '/api/client?action=access-request')).status === 503);
-process.env.SESSION_STANDARD_DOLLARS = '100';
-process.env.SESSION_ACCESS_DOLLARS = '25';
-process.env.ACCESS_SESSIONS_A_MONTH = '2';
-check('set, they read back', JSON.stringify(sessions.ratesNow()) === JSON.stringify({ standard: 100, access: 25, aMonth: 2 }));
+const save = (payload) => ask(costsApi, 'admin-1', 'POST', '/api/costs?action=prices', payload);
+check('a price that is not a number is refused, naming it',
+  (await save({ standard: 'lots' })).status === 400 && (await save({ standard: 'lots' })).out.error.startsWith('The standard session'));
+check('a count that is not whole is refused', (await save({ aMonth: '2.5' })).status === 400);
+check('only the owner sets them', (await ask(costsApi, 'acct-sess-1', 'POST', '/api/costs?action=prices', { standard: 1 })).status === 403);
+check('saved on Money', (await save({ standard: '100', access: '25', aMonth: '2' })).status === 200);
+check('they read back', JSON.stringify(await sessions.ratesNow()) === JSON.stringify({ standard: 100, access: 25, aMonth: 2 }));
 check('the month is the owner\'s clock, four hours behind UTC',
   sessions.monthOf('2026-11-01T02:00:00Z') === '2026-10' && sessions.monthOf('2026-11-01T05:00:00Z') === '2026-11');
 check('the next month wraps the year', sessions.monthAfter('2026-12') === '2027-01');

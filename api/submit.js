@@ -51,7 +51,7 @@ export default handle('POST', async (req, res) => {
   let priceCents = SESSION_PRICE_CENTS;
   if (kind === 'session') {
     if (!isRate(rate)) throw new HttpError(400, 'A session is at the access rate or the standard rate.');
-    const rates = ratesNow();
+    const rates = await ratesNow();
     if (!rates) throw new HttpError(503, "Sessions aren't on sale yet: the rates aren't set.");
     priceCents = Math.round((rate === 'access' ? rates.access : rates.standard) * 100);
     account = accountOrNull(req);

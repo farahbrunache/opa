@@ -195,14 +195,17 @@ function range(low, high, format = money) {
   return low === high ? format(low) : `${format(low)}–${format(high)}`;
 }
 
+const PRICE_FIELDS = [['hourlow', 'hourLow'], ['hourhigh', 'hourHigh'], ['pricestandard', 'standard'],
+  ['priceaccess', 'access'], ['accessamonth', 'aMonth']];
+
 function renderPrice(price) {
+  for (const [id, key] of PRICE_FIELDS) document.getElementById(id).value = price.set[key] || '';
   const said = document.getElementById('pricesaid');
   said.textContent = price.suggested ? `${range(price.suggested.low, price.suggested.high)} a session`
     : !price.rates ? 'Your rate: not set' : 'Not enough data yet';
   const figures = document.getElementById('pricefigures');
   figures.textContent = '';
   stat(figures, 'Your rate an hour', price.rates ? range(price.rates.low, price.rates.high, (v) => `$${Math.round(v)}`) : 'not set');
-  stat(figures, 'Payment fee', `${price.feePercent}%`);
   stat(figures, `Working clients, ${price.days} days`, String(price.clients));
   stat(figures, 'Your time, a client a month', minutesOf(price.minutesAClient));
   stat(figures, 'AI, a client a month', price.aiAClient === null ? '—' : exact(price.aiAClient));
@@ -333,6 +336,19 @@ document.getElementById('linecancel').addEventListener('click', () => {
   document.getElementById('lineformtitle').textContent = 'Add a cost';
   document.getElementById('linesave').textContent = 'Add it';
   document.getElementById('linecancel').hidden = true;
+});
+
+document.getElementById('prices').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const button = document.getElementById('pricesave');
+  button.disabled = true;
+  try {
+    await post('prices', Object.fromEntries(PRICE_FIELDS.map(([id, key]) => [key, document.getElementById(id).value])));
+    window.location.reload();
+  } catch (error) {
+    msg('msg', error.message, 'bad');
+    button.disabled = false;
+  }
 });
 
 document.getElementById('addline').addEventListener('submit', async (event) => {

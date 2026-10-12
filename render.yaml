@@ -61,15 +61,3 @@ services:
         sync: false
       - key: CONFIRM_TARGET_HOURS
         sync: false
-      - key: SESSION_STANDARD_DOLLARS
-        sync: false
-      - key: SESSION_ACCESS_DOLLARS
-        sync: false
-      - key: ACCESS_SESSIONS_A_MONTH
-        sync: false
-      - key: OWNER_HOUR_DOLLARS_LOW
-        sync: false
-      - key: OWNER_HOUR_DOLLARS_HIGH
-        sync: false
-      - key: PAYMENT_FEE_PERCENT
-        sync: false

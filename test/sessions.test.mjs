@@ -6,6 +6,7 @@ const { signSession } = await import('../lib/crypto.js');
 const desk = (await import('../api/desk.js')).default;
 const client = (await import('../api/client.js')).default;
 const submit = (await import('../api/submit.js')).default;
+const { PRIVACY_VERSION } = await import('../lib/privacy.js');
 const payments = (await import('../api/payments.js')).default;
 const sessions = await import('../lib/sessions.js');
 const costsApi = (await import('../api/costs.js')).default;
@@ -53,10 +54,12 @@ check('a price that is not a number is refused, naming it',
 check('a count that is not whole is refused', (await save({ aMonth: '2.5' })).status === 400);
 check('only the owner sets them', (await ask(costsApi, 'acct-sess-1', 'POST', '/api/costs?action=prices', { standard: 1 })).status === 403);
 check('a Wise handle with a space in it is refused', (await save({ wise: 'two words' })).status === 400);
-check('with no Wise handle a Wise payment is refused', (await ask(submit, null, 'POST', '/api/submit', { method: 'wise' })).status === 503);
+check('with no Wise handle a Wise payment is refused', (await ask(submit, null, 'POST', '/api/submit', { method: 'wise', privacy: PRIVACY_VERSION })).status === 503);
 check('saved on Money', (await save({ standard: '100', access: '25', aMonth: '2', wise: 'invented-wisetag', confirmHours: '10' })).status === 200);
-const paid = await ask(submit, null, 'POST', '/api/submit', { method: 'wise' });
+const paid = await ask(submit, null, 'POST', '/api/submit', { method: 'wise', privacy: PRIVACY_VERSION });
 check('the Wise handle saved on Money is where they pay', paid.status === 201 && paid.out.payTo === 'invented-wisetag', paid.out);
+const [agreed] = await tagged`select privacy_version, privacy_agreed_at from orders where reference_code = ${paid.out.reference}`;
+check('the order keeps the privacy version agreed to and when', agreed?.privacy_version === PRIVACY_VERSION && Boolean(agreed?.privacy_agreed_at), agreed);
 const { confirmTargetHours } = await import('../lib/confirm-speed.js');
 check('and the confirm target is the one saved there', (await confirmTargetHours()) === 10);
 check('they read back', JSON.stringify(await sessions.ratesNow()) === JSON.stringify({ standard: 100, access: 25, aMonth: 2 }));
@@ -82,7 +85,7 @@ check('the third goes on next month\'s list, in order', asked.status === 200 && 
 check('nobody is asked why', !JSON.stringify(asked.out).includes('reason'));
 
 console.log('buying one');
-const buy = (account, payload) => ask(submit, account, 'POST', '/api/submit', { method: 'wise', ...payload });
+const buy = (account, payload) => ask(submit, account, 'POST', '/api/submit', { method: 'wise', privacy: PRIVACY_VERSION, ...payload });
 check('a session needs a rate it knows', (await buy('acct-sess-1', { session: 'cheap' })).status === 400);
 check('and a signed-in buyer', (await buy(null, { session: 'standard' })).status === 401);
 check('an access-rate buy needs a request that was given',

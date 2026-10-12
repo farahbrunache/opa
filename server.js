@@ -16,6 +16,7 @@ const PAGES = {
   '/preview': ['index.html', 'text/html; charset=utf-8'],
   '/funnel': ['funnel.html', 'text/html; charset=utf-8'],
   '/ai': ['ai.html', 'text/html; charset=utf-8'],
+  '/privacy': ['privacy.html', 'text/html; charset=utf-8'],
   '/style.css': ['style.css', 'text/css; charset=utf-8'],
   '/client.css': ['client.css', 'text/css; charset=utf-8'],
   '/codefield.js': ['codefield.js', 'text/javascript; charset=utf-8'],

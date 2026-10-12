@@ -12,6 +12,7 @@ import { HttpError, handle, readJson, send } from '../lib/http.js';
 import { referralCode } from '../lib/referrals.js';
 import { accountOrNull } from '../lib/auth.js';
 import { isRate } from '../lib/desk.js';
+import { PRIVACY_VERSION } from '../lib/privacy.js';
 import { ratesNow, requestsFor, wiseHandle } from '../lib/sessions.js';
 
 const DUPLICATE_MESSAGE =
@@ -79,6 +80,12 @@ export default handle('POST', async (req, res) => {
     amountCents = Math.round(amount * 100);
   }
 
+  if (body.privacy !== PRIVACY_VERSION) {
+    throw new HttpError(400, body.privacy
+      ? 'The privacy page has changed since this page loaded. Reload, read it, and tick again.'
+      : 'Tick that you have read and agree to the privacy page.');
+  }
+
   const where = await payTo(method);
 
   await ensureSchema();
@@ -129,11 +136,11 @@ export default handle('POST', async (req, res) => {
       insert into orders (
         claim_token_hash, card_code_hash, card_amount_cents,
         card_code_encrypted, payment_method, reference_code, from_code, kind, rate,
-        client_account_id, case_id
+        client_account_id, case_id, privacy_version, privacy_agreed_at
       ) values (
         ${keyedHash(token)}, ${codeHash}, ${amountCents},
         ${code ? encrypt(code) : null}, ${method}, ${reference}, ${fromCode}, ${kind}, ${rate},
-        ${account}, ${caseId}
+        ${account}, ${caseId}, ${PRIVACY_VERSION}, now()
       )
       returning id
     `;

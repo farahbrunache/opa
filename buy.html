@@ -73,6 +73,7 @@
              spellcheck="false" placeholder="XXXX-XXXXXX-XXXX">
     </div>
 
+    <label class="cagree"><input type="checkbox" id="agree" required> <span>I have read and agree to the <a href="/privacy" target="_blank" rel="noopener">privacy page</a>.</span></label>
     <button type="submit" class="cbtn" id="go" disabled>Start my order</button>
   </form>
 
@@ -110,6 +111,7 @@
   import { codeFields } from '/codefield.js';
   import { call, showProblem } from '/problem.js';
   codeFields(['code', 'rcode']);
+  const PRIVACY_VERSION = '2026-10-12';
 
   const asked = new URLSearchParams(location.search);
   const from = (asked.get('from') || '').toUpperCase();
@@ -161,9 +163,14 @@
       document.getElementById('codefield').hidden = !needsCode;
       document.getElementById('code').required = needsCode;
       document.getElementById('amount').required = needsCode;
-      document.getElementById('go').disabled = false;
+      ready();
     });
   }
+
+  function ready() {
+    document.getElementById('go').disabled = !method.value || !document.getElementById('agree').checked;
+  }
+  document.getElementById('agree').addEventListener('change', ready);
 
   function el(tag, text, className) {
     const node = document.createElement(tag);
@@ -324,11 +331,12 @@
         code: document.getElementById('code').value,
         from: arrived ? from : null,
         session,
+        privacy: PRIVACY_VERSION,
       }, 'Placing your order');
       showOrder('result', data);
     } catch (error) {
       showProblem(document.getElementById('result'), error, 'Placing your order');
-      go.disabled = false;
+      ready();
     }
   });
 

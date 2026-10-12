@@ -1,12 +1,11 @@
-import { check, db, failureCount, seedPrompts, tagged } from './harness.mjs';
+import { check, db, failureCount, seedPrompts, tagged, useSlot } from './harness.mjs';
 
 await db.ensureSchema();
+await useSlot('A', 'a-test-endpoint', 'a-test-model');
 await seedPrompts();
 
 process.env.ADMIN_ACCOUNT_IDS = 'admin-1';
-process.env.DRAFT_MODEL_A_NAME = 'a-test-model';
-process.env.DRAFT_MODEL_A_URL = 'https://api.runpod.ai/v2/a-test-endpoint';
-process.env.DRAFT_MODEL_A_KEY = 'a-test-key';
+process.env.RUNPOD_API_KEY = 'a-test-key';
 
 const { signSession, encrypt, decrypt } = await import('../lib/crypto.js');
 const { Readable } = await import('node:stream');

@@ -12,12 +12,14 @@ const H = 3_600_000;
 
 console.log('');
 console.log('the target');
-check('empty reads as 12', speed.confirmTargetHours('') === 12);
-check('missing reads as 12', speed.confirmTargetHours(undefined) === 12);
-check('a number moves it', speed.confirmTargetHours('8') === 8);
-check('a fraction is allowed', speed.confirmTargetHours(' 6.5 ') === 6.5);
-check('zero is not a target', speed.confirmTargetHours('0') === 12);
-check('words are not a target', speed.confirmTargetHours('twelve') === 12);
+const { writeChoice } = await import('../lib/settings.js');
+const target = async (value) => { await writeChoice('confirm:target-hours', value); return speed.confirmTargetHours(); };
+check('empty reads as 12', (await target('')) === 12);
+check('a number moves it', (await target('8')) === 8);
+check('a fraction is allowed', (await target(' 6.5 ')) === 6.5);
+check('zero is not a target', (await target('0')) === 12);
+check('words are not a target', (await target('twelve')) === 12);
+await writeChoice('confirm:target-hours', '');
 
 async function order(ref, { method = 'wise', status = 'pending', paid = 3, took = null, demo = false, mine = false, code = null } = {}) {
   const [made] = await tagged`
@@ -68,9 +70,9 @@ check('counted in the totals', today.totals.toConfirm === 2, today.totals);
 check('the gift card code is there for the owner', today.toConfirm[1].code === 'TEST-CODE00-ABCD');
 check('with the target', today.confirmTargetHours === 12);
 check('and how long each has waited', Math.round(today.toConfirm[0].hoursWaiting) === 14, today.toConfirm[0]);
-process.env.CONFIRM_TARGET_HOURS = '8';
+await writeChoice('confirm:target-hours', '8');
 check('the setting moves the target on Today', (await get(desk, '/api/desk?action=today')).confirmTargetHours === 8);
-delete process.env.CONFIRM_TARGET_HOURS;
+await writeChoice('confirm:target-hours', '');
 
 console.log('a reject from Today');
 const wrong = await post('/api/payments?action=decide', { id: card, decision: 'reject', reason: 'not-a-reason' });

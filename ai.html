@@ -29,6 +29,28 @@
     <section class="sec" id="models">
       <div class="sechead"><h2>Models</h2><span class="count" id="modelcount"></span></div>
       <ul class="list" id="slots"></ul>
+      <div class="box" id="addbox">
+        <span class="cap">Add a model</span>
+        <form class="fields" id="addmodel" novalidate>
+          <div class="grid2">
+            <div class="field">
+              <label for="addslot">Slot</label>
+              <select id="addslot"></select>
+            </div>
+            <div class="field">
+              <label for="addgpu">GPU</label>
+              <select id="addgpu"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="addname">Ollama model</label>
+            <input id="addname" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="qwen2.5:14b">
+          </div>
+          <div class="pair">
+            <button type="submit" class="btn primary" id="addgo">Make the endpoint</button>
+          </div>
+        </form>
+      </div>
       <div class="sechead"><h3>Which slot each button uses</h3><span class="count" id="buttoncount"></span></div>
       <ul class="list" id="buttons"></ul>
     </section>
@@ -86,15 +108,62 @@
     return [parts.join(' · '), w.unhealthy || w.throttled ? 'late' : ''];
   }
 
-  function drawSlots(slots) {
+  function rate(perSecond) {
+    return perSecond === null || perSecond === undefined ? null : `$${(perSecond * 60).toFixed(4)} a minute of drafting`;
+  }
+
+  function option(text, value, on = false) {
+    const item = el('option', text);
+    item.value = value;
+    item.selected = on;
+    return item;
+  }
+
+  function endpointPicker(slot, endpoints) {
+    const box = el('div', null, 'slotpick');
+    const pick = el('select');
+    pick.setAttribute('aria-label', `RunPod endpoint for slot ${slot.slot}`);
+    pick.append(option('No endpoint', ''));
+    for (const endpoint of endpoints) {
+      pick.append(option(endpoint.model ? `${endpoint.model} · ${endpoint.name}` : endpoint.name, endpoint.id,
+        endpoint.id === slot.endpointId));
+    }
+    const use = el('button', 'Use', 'btn ghost small');
+    use.type = 'button';
+    use.addEventListener('click', async () => {
+      use.disabled = true;
+      try {
+        await post('slot-set', { slot: slot.slot, endpointId: pick.value });
+        await draw();
+      } catch (error) {
+        use.disabled = false;
+        msg('msg', error.message, 'bad');
+      }
+    });
+    box.append(pick, use);
+    return box;
+  }
+
+  function drawSlots(data) {
     const list = document.getElementById('slots');
     list.textContent = '';
-    for (const slot of slots) {
+    for (const slot of data.slots) {
       const [said, tone] = workers(slot);
-      list.append(row(`Slot ${slot.slot}`, slot.set ? slot.name : '', said, tone));
+      const item = row(`Slot ${slot.slot} · ${slot.tier}`, slot.set ? slot.name : '',
+        [said, rate(slot.perSecond)].filter(Boolean).join(' · '), tone);
+      if (data.keySet && !data.endpoints.said) item.append(endpointPicker(slot, data.endpoints.list));
+      list.append(item);
     }
-    const set = slots.filter((s) => s.set).length;
-    document.getElementById('modelcount').textContent = `${set} of ${slots.length} set up`;
+    const set = data.slots.filter((s) => s.set).length;
+    document.getElementById('modelcount').textContent = !data.keySet ? 'RUNPOD_API_KEY not set'
+      : data.endpoints.said ? data.endpoints.said : `${set} of ${data.slots.length} set up`;
+    document.getElementById('addbox').hidden = !data.keySet;
+    const slots = document.getElementById('addslot');
+    const gpus = document.getElementById('addgpu');
+    if (!slots.options.length) {
+      for (const slot of data.slots) slots.append(option(`${slot.slot} · ${slot.tier}`, slot.slot));
+      for (const gpu of data.gpus) gpus.append(option(gpu.label, gpu.value));
+    }
   }
 
   function drawButtons(data) {
@@ -105,13 +174,14 @@
     for (const button of data.buttons) {
       const item = el('li', null, 'item');
       const head = el('div', null, 'line');
-      head.append(el('span', button.label, 'title'), el('span', button.inUse ? `Slot ${button.inUse}` : 'Off', 'muted'));
+      const fell = button.inUse && button.inUse !== button.chosen ? ` · ${button.chosen} not set up` : '';
+      head.append(el('span', button.label, 'title'), el('span', button.inUse ? `Slot ${button.inUse}${fell}` : 'Off', 'muted'));
       const picks = el('div', null, 'pair');
       for (const slot of data.slots) {
         const pick = el('button', slot.set ? `${slot.slot} · ${slot.name}` : `Slot ${slot.slot}`, 'btn ghost small');
         pick.type = 'button';
         if (!slot.set) offWhen(pick, true, 'Not set up');
-        pick.disabled = !slot.set || slot.slot === button.inUse;
+        pick.disabled = !slot.set || slot.slot === button.chosen;
         pick.addEventListener('click', async () => {
           pick.disabled = true;
           try {
@@ -177,6 +247,28 @@
     offWhen(button, !set || !demo, !set ? 'No model set up' : 'No demo data');
   }
 
+  document.getElementById('addmodel').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = document.getElementById('addgo');
+    const said = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Making the endpoint';
+    try {
+      await post('model-add', {
+        slot: document.getElementById('addslot').value,
+        gpu: document.getElementById('addgpu').value,
+        model: document.getElementById('addname').value,
+      });
+      document.getElementById('addname').value = '';
+      await draw();
+    } catch (error) {
+      msg('msg', error.message, 'bad');
+    } finally {
+      button.disabled = false;
+      button.textContent = said;
+    }
+  });
+
   async function draw() {
     try {
       const data = await call(`/api/desk?action=ai-check&page=${view.page}`);
@@ -184,8 +276,8 @@
       document.getElementById('signin').hidden = true;
       document.getElementById('work').hidden = false;
       document.getElementById('msg').hidden = true;
-      drawSlots(data.slots);
-    drawButtons(data);
+      drawSlots(data);
+      drawButtons(data);
       drawButton(data);
       if (!view.running) drawRun(data);
       drawPresses(data);

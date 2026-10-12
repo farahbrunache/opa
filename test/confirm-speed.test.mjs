@@ -84,7 +84,7 @@ await order('RSPD0-00001', { status: 'confirmed', paid: 30, took: 2 });
 await order('RSPD0-00002', { status: 'rejected', paid: 40, took: 14 });
 await order('RSPD0-00003', { status: 'confirmed', paid: 50, took: 5, mine: true });
 await order('RSPD0-00004', { method: 'amazon', paid: 13 });
-process.env.CONFIRM_TARGET_HOURS = '10';
+await (await import('../lib/settings.js')).writeChoice('confirm:target-hours', '10');
 money = await list();
 check('the setting moves the target', money.speed.targetHours === 10);
 check('only real decisions count, yours left out', money.speed.decided === 2 && money.speed.within === 1, money.speed);
@@ -94,7 +94,7 @@ check('the bars drop the demo rows once there are real ones', money.speed.rows.e
   && money.speed.rows.length === 3, money.speed.rows);
 check('newest first, the waiting one on top', money.speed.rows[0].reference === 'RSPD0-00004'
   && money.speed.rows[0].waiting, money.speed.rows[0]);
-delete process.env.CONFIRM_TARGET_HOURS;
+await (await import('../lib/settings.js')).writeChoice('confirm:target-hours', '');
 
 const failures = failureCount();
 console.log(failures ? `\n${failures} failed` : '\nall passed');

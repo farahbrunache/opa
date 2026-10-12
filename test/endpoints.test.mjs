@@ -149,11 +149,6 @@ check('gift card: rejects a non-numeric amount', r.statusCode === 400, r.payload
 r = await run(submit, 'POST', '/api/submit', { method: 'zelle' });
 check('zelle is no longer offered', r.statusCode === 400, r.payload);
 
-delete process.env.PAY_WISE;
-r = await run(submit, 'POST', '/api/submit', { method: 'wise' });
-check('wise: refuses when no destination is configured', r.statusCode === 503, r.payload);
-check('wise: names the missing setting', /PAY_WISE/.test(r.payload?.error || ''), r.payload);
-
 check('every rejection carries a message', typeof r.payload?.error === 'string' && r.payload.error.length > 20, r.payload);
 
 const { referenceCode, normalizeReference, looksLikeReference } = await import('../lib/orders.js');

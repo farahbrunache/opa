@@ -1,9 +1,9 @@
 import { check, db, failureCount, tagged } from './harness.mjs';
 
 await db.ensureSchema();
+await (await import('../lib/settings.js')).writeChoice('pay:wise', '@test-wisetag');
 
 process.env.ADMIN_ACCOUNT_IDS = 'admin-1';
-process.env.PAY_WISE = '@test-wisetag';
 const { signSession } = await import('../lib/crypto.js');
 const { Readable } = await import('node:stream');
 const deskEndpoint = (await import('../api/desk.js')).default;

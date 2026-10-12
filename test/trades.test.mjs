@@ -47,13 +47,12 @@ check('without the voice key it names the setting', script.status === 503
 
 console.log('copying the list');
 const off = await call(sweep, 'POST', '/api/sweep?action=trades', {}, { authorization: 'Bearer invented-sweep-secret' });
-check('without its two settings it says which are missing', off.status === 503 && /TAXONOMY_URL/.test(off.out?.error || off.message), off);
-process.env.TAXONOMY_URL = 'https://ctf.invalid/';
+check('without its token it says so', off.status === 503 && /TAXONOMY_TOKEN/.test(off.out?.error || off.message), off);
 process.env.TAXONOMY_TOKEN = 'onepercent.invented';
 const copied = await call(sweep, 'POST', '/api/sweep?action=trades', {}, { authorization: 'Bearer invented-sweep-secret' });
 check('the daily job copies it', copied.status === 200 && copied.out.titles === 3, copied);
 check('from the hierarchy route, with the name.secret credential',
-  sent.url === 'https://ctf.invalid/api/skills-taxonomy/hierarchy' && sent.authorization === 'Bearer onepercent.invented', sent);
+  sent.url === 'https://app.chargingthefuture.com/api/skills-taxonomy/hierarchy' && sent.authorization === 'Bearer onepercent.invented', sent);
 titles = titles.slice(0, 2);
 const again = await call(desk, 'POST', '/api/desk?action=trades-copy', {});
 check('copying by hand works too, and a title gone from their list is retired', again.out.retired === 1, again);

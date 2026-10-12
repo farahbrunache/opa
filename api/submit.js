@@ -12,21 +12,20 @@ import { HttpError, handle, readJson, send } from '../lib/http.js';
 import { referralCode } from '../lib/referrals.js';
 import { accountOrNull } from '../lib/auth.js';
 import { isRate } from '../lib/desk.js';
-import { ratesNow, requestsFor } from '../lib/sessions.js';
+import { ratesNow, requestsFor, wiseHandle } from '../lib/sessions.js';
 
 const DUPLICATE_MESSAGE =
   'That gift card has already been submitted. If you have lost your link, recover it with the ' +
   'same code.';
 
-function payTo(method) {
+async function payTo(method) {
   const spec = PAYMENT_METHODS[method];
-  if (!spec.envKey) return null;
-  const where = process.env[spec.envKey];
+  if (spec.needsCode) return null;
+  const where = await wiseHandle();
   if (!where) {
     throw new HttpError(
       503,
-      `${spec.label} is not set up yet — ${spec.envKey} is missing from the project settings. ` +
-        'Pick another way to pay, or try again later.',
+      `${spec.label} is not set up yet. Pick another way to pay, or try again later.`,
     );
   }
   return where;
@@ -80,7 +79,7 @@ export default handle('POST', async (req, res) => {
     amountCents = Math.round(amount * 100);
   }
 
-  const where = payTo(method);
+  const where = await payTo(method);
 
   await ensureSchema();
 

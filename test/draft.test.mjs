@@ -1,52 +1,45 @@
-let failures = 0;
-function check(label, condition, detail) {
-  if (condition) console.log('  ok   ' + label);
-  else { failures += 1; console.log('  FAIL ' + label + (detail === undefined ? '' : ' -> ' + JSON.stringify(detail))); }
-}
+import { check, db, failureCount, useSlot } from './harness.mjs';
 
-function configure(settings) {
-  for (const slot of ['A', 'B', 'C']) {
-    for (const part of ['NAME', 'URL', 'KEY']) delete process.env[`DRAFT_MODEL_${slot}_${part}`];
-  }
-  Object.assign(process.env, settings);
+await db.ensureSchema();
+
+async function configure(slots, key = 'k1') {
+  if (key) process.env.RUNPOD_API_KEY = key;
+  else delete process.env.RUNPOD_API_KEY;
+  for (const slot of ['A', 'B', 'C']) await useSlot(slot, slots[slot]?.[0] || '', slots[slot]?.[1] || '');
 }
 
 const draft = await import('../lib/draft.js');
 
 console.log('which model is offered');
 
-configure({});
-check('nothing is offered when no slot is configured', draft.models().length === 0);
+await configure({});
+check('nothing is offered when no slot has an endpoint', (await draft.models()).length === 0);
 
 let refused = null;
-try { draft.resolve(null); } catch (error) { refused = error; }
-check('and asking for one says so rather than failing silently',
-  refused?.status === 503 && /slots are/.test(refused.message), refused?.message);
+try { await draft.resolve(null); } catch (error) { refused = error; }
+check('and asking for one says where to pick one',
+  refused?.status === 503 && /AI check/.test(refused.message), refused?.message);
 
-configure({
-  DRAFT_MODEL_A_NAME: 'Small', DRAFT_MODEL_A_URL: 'https://api.example/v2/aaa', DRAFT_MODEL_A_KEY: 'k1',
-});
-check('a slot with an address and a key is offered', draft.models().length === 1);
-check('and its name is what the setting says', draft.models()[0].name === 'Small');
+await configure({ A: ['aaa', 'llama3.2'] });
+check('a slot with an endpoint is offered', (await draft.models()).length === 1);
+check('and its name is the model', (await draft.models())[0].name === 'llama3.2');
+check('it is reached at its RunPod address', (await draft.resolve('A')).url === 'https://api.runpod.ai/v2/aaa');
 
-configure({ DRAFT_MODEL_A_URL: 'https://api.example/v2/aaa' });
-check('a slot with an address but no key is not offered', draft.models().length === 0);
+await configure({ A: ['aaa', 'llama3.2'] }, null);
+check('with no RUNPOD_API_KEY nothing is offered', (await draft.models()).length === 0);
+refused = null;
+try { await draft.resolve('A'); } catch (error) { refused = error; }
+check('and the refusal names the key', /RUNPOD_API_KEY/.test(refused?.message || ''), refused?.message);
 
-console.log('when the chosen one is retired');
-configure({
-  DRAFT_MODEL_B_NAME: 'Other', DRAFT_MODEL_B_URL: 'https://api.example/v2/bbb', DRAFT_MODEL_B_KEY: 'k2',
-});
-const fallback = draft.resolve('A');
-check('the one still configured is used', fallback.slot === 'B', fallback.slot);
-check('and the caller is told it fell back', fallback.fellBack === true);
-check('a trailing slash on the address is dropped',
-  draft.resolve('B').url === 'https://api.example/v2/bbb');
-
-configure({
-  DRAFT_MODEL_C_NAME: 'Large', DRAFT_MODEL_C_URL: 'https://api.example/v2/ccc', DRAFT_MODEL_C_KEY: 'k3',
-});
-check('a third slot is offered once set', draft.models().map((m) => m.slot).join(',') === 'C');
-check('and drafts when chosen', draft.resolve('C').name === 'Large');
+console.log('a tier that is not set up');
+await configure({ A: ['aaa', 'small'], B: ['bbb', 'mid'] });
+const large = await draft.resolve('C');
+check('a large task falls to the mid-size model first', large.slot === 'B' && large.fellBack === true, large);
+await configure({ A: ['aaa', 'small'], C: ['ccc', 'large'] });
+check('a mid-size task falls to the large model before the small one', (await draft.resolve('B')).slot === 'C');
+await configure({ B: ['bbb', 'mid'], C: ['ccc', 'large'] });
+check('a small task falls to the mid-size model', (await draft.resolve('A')).slot === 'B');
+check('a slot that is set up is used as chosen', (await draft.resolve('C')).fellBack === false);
 
 console.log('the exchange with the queue');
 
@@ -63,9 +56,7 @@ function stub(handlers) {
   };
 }
 
-configure({
-  DRAFT_MODEL_A_NAME: 'Small', DRAFT_MODEL_A_URL: 'https://api.example/v2/aaa', DRAFT_MODEL_A_KEY: 'k1',
-});
+await configure({ A: ['aaa', 'Small'] });
 
 stub([{ body: { id: 'job-1' } }]);
 const submitted = await draft.draft([{ role: 'user', content: 'hello' }], 'A');
@@ -97,8 +88,8 @@ check('an empty answer is a failure', /nothing in it/.test((await draft.jobState
 stub([{ status: 401, body: { error: 'unauthorized' } }]);
 let denied = null;
 try { await draft.draft([{ role: 'user', content: 'x' }], 'A'); } catch (error) { denied = error; }
-check('a refusal names the endpoint and the slot',
-  /api\.example\/v2\/aaa/.test(denied?.message || '') && /slot A/.test(denied?.message || ''),
+check('a refusal names the address and the endpoint',
+  /api\.runpod\.ai\/v2\/aaa/.test(denied?.message || '') && /endpoint aaa/.test(denied?.message || ''),
   denied?.message);
 
 check('the server follows a job for ten minutes', draft.FOLLOW_BUDGET_MS === 10 * 60_000);
@@ -146,5 +137,6 @@ check('every chip carries a full address',
   sheet.SHEET_LINKS.every(([, href]) => sheet.linkParts(href).some((part) => part.href === href)),
   sheet.SHEET_LINKS);
 
+const failures = failureCount();
 console.log(failures ? `\n${failures} failed` : '\nall passed');
 process.exit(failures ? 1 : 0);

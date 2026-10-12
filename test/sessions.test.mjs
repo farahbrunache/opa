@@ -2,7 +2,6 @@ import { Readable } from 'node:stream';
 import { check, db, failureCount, tagged } from './harness.mjs';
 
 process.env.ADMIN_ACCOUNT_IDS = 'admin-1';
-process.env.PAY_WISE = 'invented-wisetag';
 const { signSession } = await import('../lib/crypto.js');
 const desk = (await import('../api/desk.js')).default;
 const client = (await import('../api/client.js')).default;
@@ -53,7 +52,13 @@ check('a price that is not a number is refused, naming it',
   (await save({ standard: 'lots' })).status === 400 && (await save({ standard: 'lots' })).out.error.startsWith('The standard session'));
 check('a count that is not whole is refused', (await save({ aMonth: '2.5' })).status === 400);
 check('only the owner sets them', (await ask(costsApi, 'acct-sess-1', 'POST', '/api/costs?action=prices', { standard: 1 })).status === 403);
-check('saved on Money', (await save({ standard: '100', access: '25', aMonth: '2' })).status === 200);
+check('a Wise handle with a space in it is refused', (await save({ wise: 'two words' })).status === 400);
+check('with no Wise handle a Wise payment is refused', (await ask(submit, null, 'POST', '/api/submit', { method: 'wise' })).status === 503);
+check('saved on Money', (await save({ standard: '100', access: '25', aMonth: '2', wise: 'invented-wisetag', confirmHours: '10' })).status === 200);
+const paid = await ask(submit, null, 'POST', '/api/submit', { method: 'wise' });
+check('the Wise handle saved on Money is where they pay', paid.status === 201 && paid.out.payTo === 'invented-wisetag', paid.out);
+const { confirmTargetHours } = await import('../lib/confirm-speed.js');
+check('and the confirm target is the one saved there', (await confirmTargetHours()) === 10);
 check('they read back', JSON.stringify(await sessions.ratesNow()) === JSON.stringify({ standard: 100, access: 25, aMonth: 2 }));
 check('the month is the owner\'s clock, four hours behind UTC',
   sessions.monthOf('2026-11-01T02:00:00Z') === '2026-10' && sessions.monthOf('2026-11-01T05:00:00Z') === '2026-11');

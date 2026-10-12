@@ -72,7 +72,6 @@ check('nothing pasted is no link', profileIdFrom('  ') === null);
 
 const id = await newOrder('dir-account-1');
 
-delete process.env.DIRECTORY_SERVICE_URL;
 delete process.env.DIRECTORY_SERVICE_TOKEN;
 {
   const person = await ask(`action=person&id=${id}`);
@@ -92,10 +91,9 @@ check('no name is written for them', decrypt(row.name_encrypted) === '');
 {
   const off = await ask(`action=directory-profile&id=${id}&contact=${contact}`);
   check('switched off, the read refuses and names both settings',
-    off.status === 503 && /DIRECTORY_SERVICE_URL/.test(off.message) && /DIRECTORY_SERVICE_TOKEN/.test(off.message), off);
+    off.status === 503 && /DIRECTORY_SERVICE_TOKEN/.test(off.message), off);
 }
 
-process.env.DIRECTORY_SERVICE_URL = 'https://skills.example.test/';
 process.env.DIRECTORY_SERVICE_TOKEN = 'one-percent.an-invented-secret';
 
 const realFetch = globalThis.fetch;
@@ -125,7 +123,7 @@ answer(200, { profile });
   const read = await ask(`action=directory-profile&id=${id}&contact=${contact}`);
   check('a claimed profile is passed through', read.status === 200 && read.out.profile.lastName === 'Tiler', read);
   check('it asks the one profile, by id, with the credential',
-    asked.url === 'https://skills.example.test/api/directory/service/profiles/invented-7'
+    asked.url === 'https://app.chargingthefuture.com/api/directory/service/profiles/invented-7'
       && asked.options.headers.authorization === 'Bearer one-percent.an-invented-secret', asked);
   const [after] = await tagged`select name_encrypted, where_encrypted, why_encrypted from contacts where id = ${contact}`;
   check('nothing it said is written down', decrypt(after.name_encrypted) === '' && !after.where_encrypted && !after.why_encrypted);
@@ -171,7 +169,6 @@ globalThis.fetch = async () => { throw new Error('no route to host'); };
 }
 
 globalThis.fetch = realFetch;
-delete process.env.DIRECTORY_SERVICE_URL;
 delete process.env.DIRECTORY_SERVICE_TOKEN;
 
 const failures = failureCount();

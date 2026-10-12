@@ -26,8 +26,10 @@ const [chapter] = await tagged`select id from chapters where case_id = ${caseId}
 await tagged`update chapters set closed_with_encrypted = ${encrypt(JSON.stringify({ milestones: ['Invented step'], work: ['Invented work'] }))}
              where id = ${chapter.id}`;
 
+process.env.PAY_WISE = 'invented-handle';
 db.useDatabase(tagged);
 await db.ensureSchema();
+delete process.env.PAY_WISE;
 
 const tables = (await tagged`select table_name from information_schema.tables where table_name in ('projects', 'work')`).map((r) => r.table_name);
 check('the table is work', tables.length === 1 && tables[0] === 'work', tables);
@@ -49,6 +51,8 @@ const closed = JSON.parse(decrypt(after.closed_with_encrypted));
 check('a closed chapter names its activities', JSON.stringify(closed) === JSON.stringify({ work: ['Invented work'], activities: ['Invented step'] }), closed);
 const goal = (await tagged`select column_name from information_schema.columns where table_name = 'plans'`).map((r) => r.column_name);
 check('the goal is called goal', goal.includes('goal') && !goal.includes('path'), goal);
+const [wise] = await tagged`select value from settings where name = 'pay:wise'`;
+check('the Wise handle comes across from the old setting once', wise?.value === 'invented-handle', wise);
 const synced = await tagged`select 1 from information_schema.columns where column_name = 'steps_synced_at'`;
 check('the sync markers are gone', synced.length === 0);
 

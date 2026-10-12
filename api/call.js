@@ -58,12 +58,7 @@ export default handle('POST', async (req, res) => {
     throw new HttpError(409, 'This order did not check out, so no session is open on it.');
   }
   if (status !== 'confirmed') {
-    throw new HttpError(
-      409,
-      `This session has been used. It opens up to ${MAX_SESSION_STARTS} times within ` +
-        `${SESSION_WINDOW_HOURS} hours of the first, for a total of ` +
-        `${Math.round(SESSION_BUDGET_SECONDS / 60)} minutes, which covers one that drops.`,
-    );
+    throw new HttpError(409, 'This session has been used. Book another to call again.');
   }
 
   const used = await secondsSpent(
@@ -73,20 +68,11 @@ export default handle('POST', async (req, res) => {
     UNREPORTED_AFTER_SECONDS,
   );
   if (used >= SESSION_BUDGET_SECONDS) {
-    throw new HttpError(
-      409,
-      `This order has used the ${Math.round(SESSION_BUDGET_SECONDS / 60)} minutes it bought. ` +
-        'If a session dropped before you got anywhere, say so and it can be looked at.',
-    );
+    throw new HttpError(409, `This order has used its ${Math.round(SESSION_BUDGET_SECONDS / 60)} minutes. If a call dropped early, write to say so.`);
   }
 
   if (await aCallCameBack(order.id)) {
-    throw new HttpError(
-      409,
-      'This session has already happened, and a call that ends early is a finished one ' +
-        'rather than a cut-off one. What comes next is the writing, which arrives on this ' +
-        'page. Another conversation is another session.',
-    );
+    throw new HttpError(409, 'This call already happened. What comes next arrives on this page.');
   }
 
   const taken = await sql()`
@@ -103,12 +89,7 @@ export default handle('POST', async (req, res) => {
     returning session_starts
   `;
   if (!taken.length) {
-    throw new HttpError(
-      409,
-      `This session has been used. It opens up to ${MAX_SESSION_STARTS} times within ` +
-        `${SESSION_WINDOW_HOURS} hours of the first, for a total of ` +
-        `${Math.round(SESSION_BUDGET_SECONDS / 60)} minutes, which covers one that drops.`,
-    );
+    throw new HttpError(409, 'This session has been used. Book another to call again.');
   }
 
   const release = async () => {
@@ -125,13 +106,7 @@ export default handle('POST', async (req, res) => {
     await release();
     if (error instanceof Retell.APIError) {
       const said = JSON.stringify(error.error ?? error.message).slice(0, 400);
-      throw new HttpError(
-        502,
-        `The voice service refused to start a session (${error.status}): ${said}` +
-          (error.status === 404
-            ? ' — a Not Found here means RETELL_AGENT_ID names no agent on this account.'
-            : ''),
-      );
+      throw new HttpError(502, `The voice service refused to start a session (${error.status}): ${said}`);
     }
     throw new HttpError(502, `Could not reach the voice service: ${error.message}`);
   }

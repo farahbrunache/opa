@@ -181,8 +181,11 @@
         const pick = el('button', slot.set ? `${slot.slot} · ${slot.name}` : `Slot ${slot.slot}`, 'btn ghost small');
         pick.type = 'button';
         if (!slot.set) offWhen(pick, true, 'Not set up');
-        pick.disabled = !slot.set || slot.slot === button.chosen;
+        const on = slot.set && slot.slot === button.chosen;
+        pick.setAttribute('aria-pressed', String(on));
+        pick.disabled = !slot.set;
         pick.addEventListener('click', async () => {
+          if (on) return;
           pick.disabled = true;
           try {
             await post('model', { slot: slot.slot, for: button.family });

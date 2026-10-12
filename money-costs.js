@@ -185,6 +185,67 @@ function stat(box, label, value) {
   box.append(tile);
 }
 
+function minutesOf(value) {
+  if (value === null || value === undefined) return '—';
+  return value < 60 ? `${Math.round(value)} min` : `${Math.floor(value / 60)} hr ${Math.round(value % 60)} min`;
+}
+
+function range(low, high, format = money) {
+  if (low === null || low === undefined || high === null || high === undefined) return '—';
+  return low === high ? format(low) : `${format(low)}–${format(high)}`;
+}
+
+const PRICE_FIELDS = [['hourlow', 'hourLow'], ['hourhigh', 'hourHigh'], ['pricestandard', 'standard'],
+  ['priceaccess', 'access'], ['accessamonth', 'aMonth']];
+
+function renderPrice(price) {
+  for (const [id, key] of PRICE_FIELDS) document.getElementById(id).value = price.set[key] || '';
+  const said = document.getElementById('pricesaid');
+  said.textContent = price.suggested ? `${range(price.suggested.low, price.suggested.high)} a session`
+    : !price.rates ? 'Your rate: not set' : 'Not enough data yet';
+  const figures = document.getElementById('pricefigures');
+  figures.textContent = '';
+  stat(figures, 'Your rate an hour', price.rates ? range(price.rates.low, price.rates.high, (v) => `$${Math.round(v)}`) : 'not set');
+  stat(figures, `Working clients, ${price.days} days`, String(price.clients));
+  stat(figures, 'Your time, a client a month', minutesOf(price.minutesAClient));
+  stat(figures, 'AI, a client a month', price.aiAClient === null ? '—' : exact(price.aiAClient));
+  stat(figures, 'Sessions used, a client a month', price.sessionsAClient === null ? '—' : price.sessionsAClient.toFixed(1));
+  stat(figures, "A session's work", price.minutesASession === null ? '—'
+    : `${minutesOf(price.minutesASession)} · ${exact(price.aiASession)} AI`);
+  if (price.aiUnknown) stat(figures, 'Drafts not priced', String(price.aiUnknown));
+
+  const rates = document.getElementById('pricerates');
+  rates.textContent = '';
+  if (!price.posted) rates.append(el('li', 'No rates posted.', 'empty'));
+  for (const [label, rate] of price.posted ? [['Standard rate', price.posted.standard], ['Access rate', price.posted.access]] : []) {
+    const item = el('li', null, 'item');
+    const head = el('div', null, 'line');
+    head.append(el('span', `${label} · ${money(rate.price)} posted`, 'title'),
+      el('b', rate.leaves ? `leaves ${range(rate.leaves.low, rate.leaves.high, signed)}` : '—'));
+    item.append(head);
+    rates.append(item);
+  }
+
+  document.getElementById('buttondays').textContent = `Last ${price.days} days`;
+  const buttons = document.getElementById('pricebuttons');
+  buttons.textContent = '';
+  for (const button of price.buttons) {
+    const item = el('li', null, 'item');
+    const head = el('div', null, 'line');
+    head.append(el('span', button.label, 'title'), el('b', `${button.presses} press${button.presses === 1 ? '' : 'es'}`));
+    item.append(head);
+    if (button.presses) {
+      item.append(el('span', [
+        button.seconds === null ? null : `typically ${Math.round(button.seconds)}s`,
+        button.cost === null ? null : `${exact(button.cost)} a press`,
+        button.unpriced ? `${button.unpriced} not priced` : null,
+        button.review === null ? 'your time after it: not timed' : `your ${minutesOf(button.review / 60)} after it`,
+      ].filter(Boolean).join(' · '), 'muted'));
+    }
+    buttons.append(item);
+  }
+}
+
 function renderSessions(data) {
   const said = document.getElementById('verdict');
   const why = document.getElementById('verdictwhy');
@@ -251,6 +312,7 @@ export function renderCosts(data) {
   renderCharges(data.charges);
   renderLines(data);
   renderSessions(data);
+  renderPrice(data.price);
 }
 
 const pull = document.getElementById('pullbill');
@@ -274,6 +336,19 @@ document.getElementById('linecancel').addEventListener('click', () => {
   document.getElementById('lineformtitle').textContent = 'Add a cost';
   document.getElementById('linesave').textContent = 'Add it';
   document.getElementById('linecancel').hidden = true;
+});
+
+document.getElementById('prices').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const button = document.getElementById('pricesave');
+  button.disabled = true;
+  try {
+    await post('prices', Object.fromEntries(PRICE_FIELDS.map(([id, key]) => [key, document.getElementById(id).value])));
+    window.location.reload();
+  } catch (error) {
+    msg('msg', error.message, 'bad');
+    button.disabled = false;
+  }
 });
 
 document.getElementById('addline').addEventListener('submit', async (event) => {

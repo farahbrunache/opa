@@ -5,6 +5,8 @@ import { chargesOf } from '../lib/costs-items.js';
 import { looksLikeReference, normalizeReference } from '../lib/orders.js';
 import { HttpError, handle, readJson, send } from '../lib/http.js';
 import { pullBillNow } from '../lib/desk-drafting-bill.js';
+import { priceNow } from '../lib/pricing.js';
+import { savePrices } from '../lib/sessions.js';
 
 async function now(req, res) {
   requireAdmin(req);
@@ -12,7 +14,8 @@ async function now(req, res) {
   const figures = await costsNow();
   const rate = figures.lines.find((l) => l.every === 'draft-second');
   const charges = await chargesOf(VERDICT_DAYS, figures.lines, rate ? rate.costs : null);
-  send(res, 200, { ...figures, charges, billReader: Boolean((process.env.RUNPOD_API_KEY || '').trim()) });
+  const price = await priceNow(rate ? rate.costs : null);
+  send(res, 200, { ...figures, charges, price, billReader: Boolean((process.env.RUNPOD_API_KEY || '').trim()) });
 }
 
 async function readLine(body) {
@@ -123,6 +126,24 @@ async function removeLine(req, res) {
   send(res, 200, { ok: true });
 }
 
+const PRICE_WORDS = {
+  hourLow: 'Your rate an hour, low',
+  hourHigh: 'Your rate an hour, high',
+  standard: 'The standard session',
+  access: 'The access session',
+  aMonth: 'Access sessions a month',
+};
+
+async function prices(req, res) {
+  requireAdmin(req);
+  await ensureSchema();
+  const wrong = await savePrices(await readJson(req));
+  if (wrong) {
+    throw new HttpError(400, `${PRICE_WORDS[wrong]} needs a number above zero${wrong === 'aMonth' ? ', a whole one' : ''}, or nothing.`);
+  }
+  send(res, 200, { ok: true });
+}
+
 export default handle(['GET', 'POST'], async (req, res) => {
   const action = new URL(req.url, 'https://placeholder.invalid').searchParams.get('action');
   if (req.method === 'GET' && action === 'now') return now(req, res);
@@ -130,8 +151,9 @@ export default handle(['GET', 'POST'], async (req, res) => {
   if (req.method === 'POST' && action === 'line-edit') return editLine(req, res);
   if (req.method === 'POST' && action === 'line-remove') return removeLine(req, res);
   if (req.method === 'POST' && action === 'pull-bill') return pullBillNow(req, res);
+  if (req.method === 'POST' && action === 'prices') return prices(req, res);
   throw new HttpError(
     400,
-    'Use action=now, action=line-add, action=line-edit, action=line-remove or action=pull-bill.',
+    'Use action=now, action=line-add, action=line-edit, action=line-remove, action=pull-bill or action=prices.',
   );
 });

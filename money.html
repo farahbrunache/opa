@@ -50,6 +50,7 @@
       <a href="#m-week">Week by week</a>
       <a href="#m-costs">Running costs</a>
       <a href="#m-sessions">Per session</a>
+      <a href="#m-price">What to charge</a>
     </nav>
 
     <section class="sec" id="m-speed">
@@ -171,6 +172,44 @@
       <p class="note" id="verdictwhy"></p>
       <div class="stat3" id="figures"></div>
       <ul class="list" id="orders"></ul>
+    </section>
+
+    <section class="sec" id="m-price">
+      <div class="sechead"><h2>What to charge</h2><span class="count" id="pricesaid"></span></div>
+      <div class="stat3" id="pricefigures"></div>
+      <div class="box">
+        <span class="cap">Your prices</span>
+        <form class="fields" id="prices" novalidate>
+          <div class="grid2">
+            <div class="field">
+              <label for="hourlow">Your rate an hour, low</label>
+              <input id="hourlow" type="number" inputmode="decimal" min="0" step="any" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="hourhigh">Your rate an hour, high</label>
+              <input id="hourhigh" type="number" inputmode="decimal" min="0" step="any" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="pricestandard">Standard session</label>
+              <input id="pricestandard" type="number" inputmode="decimal" min="0" step="any" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="priceaccess">Access session</label>
+              <input id="priceaccess" type="number" inputmode="decimal" min="0" step="any" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="accessamonth">Access sessions a month</label>
+              <input id="accessamonth" type="number" inputmode="numeric" min="1" step="1" autocomplete="off">
+            </div>
+          </div>
+          <div class="pair">
+            <button type="submit" class="btn primary" id="pricesave">Save prices</button>
+          </div>
+        </form>
+      </div>
+      <ul class="list" id="pricerates"></ul>
+      <div class="sechead"><h3>Per button</h3><span class="count" id="buttondays"></span></div>
+      <ul class="list" id="pricebuttons"></ul>
     </section>
 
     <section class="sec">

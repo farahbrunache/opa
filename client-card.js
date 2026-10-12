@@ -87,7 +87,7 @@ export async function loadCard() {
     accessButton = requestButton(said);
   }
   rates.append(rate('Access rate', data.rates.access, lines, accessButton));
-  rates.append(rate('Standard rate', data.rates.standard, ['Any time.'], go('Buy a session', '/buy?session=standard', true)));
+  rates.append(rate('Standard rate', data.rates.standard, ['Any time. Subject to change.'], go('Buy a session', '/buy?session=standard', true)));
   fine.textContent = 'Same session at either rate. The rate changes the price, not the help. Nobody is asked why.';
 }
 

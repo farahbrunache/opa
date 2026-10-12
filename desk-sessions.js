@@ -105,7 +105,7 @@ export function renderSessions(person) {
   const rates = sessions.rates;
   document.getElementById('sessionrates').textContent = rates
     ? `Rates everyone sees: standard ${money(rates.standard)} a session · access rate ${money(rates.access)}, ${rates.aMonth} a month.`
-    : 'Rates not set: SESSION_STANDARD_DOLLARS, SESSION_ACCESS_DOLLARS and ACCESS_SESSIONS_A_MONTH.';
+    : 'Rates not set · set them on Money.';
   const calls = sessions.calls;
   document.getElementById('sessioncalls').textContent = calls.length
     ? `Calls: ${calls.length} · ${calls.map((c) => `${c.calledAt ? weekday(c.calledAt) : 'no call yet'} · ${money(c.amount)}`).join(' · ')}`

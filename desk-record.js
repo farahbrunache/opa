@@ -177,7 +177,7 @@ function renderDrafting(person) {
     if (model) {
       once(pick, 'click', async () => {
         try {
-          await post('model', { slot: model.slot });
+          await post('model', { slot: model.slot, for: 'sheet' });
           await settled(`Drafting with ${model.name}.`);
         } catch (error) {
           msg('rmsg', error.message, 'bad');

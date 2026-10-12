@@ -198,6 +198,7 @@ let added = await write({ add: 1 });
 check('a tap on an empty figure starts it at one', added.out.total === 1 && added.out.week === 1, added);
 check('and says which tap it was, with its time', added.out.tap?.id > 0 && Boolean(added.out.tap?.at), added);
 await write({ pool: '170' });
+await tagged`update approach_fixes set at = now() - interval '10 days'`;
 const tapOne = await write({ add: 1 });
 const tapTwo = await write({ add: 1 });
 check('each tap goes up by one from the typed figure', tapTwo.out.total === 172, tapTwo);
@@ -220,7 +221,16 @@ check('an old tap cannot be undone', (await write({ undo: Number(old.id) })).sta
 
 const fixed = await write({ pool: '200' });
 check('fix count sets the total', fixed.out.total === 200, fixed);
-check('and leaves this week alone, because the taps were real', fixed.out.week === 3, fixed);
+check('and counts what it added toward this week', fixed.out.week === 31, fixed);
+const lowered = await write({ pool: '190' });
+check('a fix down takes it back off this week', lowered.out.week === 21, lowered);
+await write({ pool: '' });
+const retyped = await write({ pool: '500' });
+check('typing a figure onto an empty one is not counted as this week', retyped.out.week === 21, retyped);
+check('a fix down never takes this week below zero', (await write({ pool: '0' })).out.week === 0);
+await tagged`update approach_fixes set at = now() - interval '10 days'`;
+check('only fixes from the last seven days count toward this week', (await write({ pool: '200' })).out.week === 203, null);
+await tagged`update approach_fixes set at = now() - interval '10 days'`;
 state = await write({ add: 1 });
 check('a tap after the fix adds to the fixed figure', state.out.total === 201, state);
 check('only one at a time', (await write({ add: 5 })).status === 400);

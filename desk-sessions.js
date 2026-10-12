@@ -13,6 +13,27 @@ function holes(held) {
   return row;
 }
 
+const ENDED = { delivered: 'delivered', cap: 'time cap', closed: 'closed' };
+
+function costOf(h, hourRates) {
+  if (!hourRates) return null;
+  const at = (rate) => (h.minutes / 60) * rate + h.ai;
+  return { low: at(hourRates.low), high: at(hourRates.high) };
+}
+
+function useLine(h, sessions) {
+  const li = el('li');
+  const state = h.closedAt ? `${ENDED[h.closedWhy] || 'closed'} ${weekday(h.closedAt)}` : 'open';
+  li.append(`${weekday(h.usedAt)} · `, el('b', h.usedFor || 'no activity named'),
+    ` · ${h.rateLabel.toLowerCase()} · ${h.minutes} of ${sessions.cap} min · ${state}`);
+  const cost = costOf(h, sessions.hourRates);
+  if (cost && h.paid !== null) {
+    const over = cost.high > h.paid;
+    li.append(' · ', el('span', `cost ${money(cost.low)}–${money(cost.high)} of ${money(h.paid)}`, over ? 'bad' : null));
+  }
+  return li;
+}
+
 function card(person, sessions) {
   const box = el('div', null, 'punch');
   const used = sessions.held.filter((h) => h.usedAt);
@@ -23,19 +44,35 @@ function card(person, sessions) {
   box.append(head, holes(sessions.held));
   if (used.length) {
     const list = el('ul', null, 'uses');
-    for (const h of used) {
-      const li = el('li');
-      li.append(`${weekday(h.usedAt)} · `, el('b', h.usedFor || 'no activity named'), ` · ${h.rateLabel.toLowerCase()}`);
-      list.append(li);
-    }
+    for (const h of used) list.append(useLine(h, sessions));
     box.append(list);
   }
   return box;
 }
 
+function closeButton(person, label, why) {
+  const button = el('button', label, 'btn small');
+  button.type = 'button';
+  once(button, 'click', async () => {
+    button.disabled = true;
+    try {
+      await post('session-close', { id: person.id, why });
+      await settled(`Session closed · ${label.toLowerCase()}.`);
+    } catch (error) {
+      button.disabled = false;
+      msg('rmsg', error.message, 'bad');
+    }
+  });
+  return button;
+}
+
 function useRow(person, sessions) {
   const row = document.getElementById('sessionuse');
   row.textContent = '';
+  if (sessions.held.some((h) => h.usedAt && !h.closedAt)) {
+    row.append(closeButton(person, 'Delivered', 'delivered'), closeButton(person, 'Close', 'closed'));
+    return;
+  }
   const left = sessions.held.filter((h) => !h.usedAt).length;
   const open = (person.activities || []).filter((a) => a.state === 'todo');
   if (!left || !open.length) return;
@@ -46,13 +83,13 @@ function useRow(person, sessions) {
     option.value = String(a.id);
     pick.append(option);
   }
-  const use = el('button', 'Use one session', 'btn small');
+  const use = el('button', 'Open a session', 'btn small');
   use.type = 'button';
   once(use, 'click', async () => {
     use.disabled = true;
     try {
       const out = await post('session-use', { id: person.id, activityId: Number(pick.value) });
-      await settled(`One session used for ${out.activity}.`);
+      await settled(`Session open for ${out.activity}.`);
     } catch (error) {
       use.disabled = false;
       msg('rmsg', error.message, 'bad');
@@ -95,7 +132,9 @@ export function renderSessions(person) {
     return;
   }
   const left = sessions.held.filter((h) => !h.usedAt).length;
-  note.textContent = sessions.held.length ? `${left} of ${sessions.held.length} left` : 'No sessions on the card';
+  const live = sessions.held.find((h) => h.usedAt && !h.closedAt);
+  note.textContent = live ? `Open · ${live.minutes} of ${sessions.cap} min`
+    : sessions.held.length ? `${left} of ${sessions.held.length} left` : 'No sessions on the card';
   if (sessions.held.length) where.append(card(person, sessions));
   for (const pending of sessions.pending) {
     where.append(el('p', `${pending.reference} · ${pending.rateLabel} · ${money(pending.amount)} · paid ${weekday(pending.paidAt)} · to confirm on Today`, 'faint'));

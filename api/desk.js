@@ -17,7 +17,7 @@ import { setPlan } from '../lib/desk-plan.js';
 import {
   addActivity, dropActivity, moveToTodo, pushActivity, recordDone, reopenActivity, saveOutcome, setCadence,
 } from '../lib/desk-activities.js';
-import { useSession } from '../lib/desk-sessions.js';
+import { endSession, useSession } from '../lib/desk-sessions.js';
 import { addContact, moveContact, reachOut } from '../lib/desk-contacts.js';
 import {
   addQuestion, deleteQuestion, importQuestions, draftQuestions, editQuestion, listQuestions, markAsked,
@@ -216,6 +216,7 @@ async function reply(req, res) {
   `;
   if (auto) await record(id, 'message.auto', text);
   else await markUsed(id, 'reply');
+  if (auto || body.free === true) req.free = true;
   if (fromTemplate) await record(id, 'message.template', text);
   const asked = auto ? 0 : await markAsked(id, body.questions);
   send(res, 201, { ok: true, asked });
@@ -260,6 +261,7 @@ const ACTIONS = {
     'activity-push': pushActivity,
     'activity-cadence': setCadence,
     'session-use': useSession,
+    'session-close': endSession,
     'work-take': takeOnWork,
     'work-move': moveWork,
     'work-due': setWorkDue,
@@ -329,7 +331,7 @@ export default handle(['GET', 'POST'], async (req, res) => {
   const params = query(req);
   try {
     if (req.method === 'GET' && action === 'person') await startClock(params.get('id'));
-    if (req.method === 'POST' && STEPS[action]) await timeStep(params.get('on'), action);
+    if (req.method === 'POST' && STEPS[action]) await timeStep(params.get('on'), action, req.free === true);
   } catch (error) {
     console.error('[one-percent] a step was not timed:', error.message);
   }

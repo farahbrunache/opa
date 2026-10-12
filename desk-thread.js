@@ -198,8 +198,9 @@ export function renderThread(person) {
   }
   setMode(compose.mode);
 
-  once(form, 'submit', async (event) => {
-    event.preventDefault();
+  const free = document.getElementById('sendfree');
+  free.hidden = !(person.sessions?.held || []).some((h) => h.usedAt && !h.closedAt);
+  const sendIt = async (asFree) => {
     const input = document.getElementById('replybody');
     const text = input.value;
     const asked = compose.mode === 'me'
@@ -211,6 +212,7 @@ export function renderThread(person) {
         mode: compose.mode === 'auto' ? 'auto' : undefined,
         fromTemplate: compose.fromTemplate || undefined,
         questions: asked.length ? asked : undefined,
+        free: asFree || undefined,
       });
       input.value = '';
       compose.fromTemplate = false;
@@ -226,7 +228,12 @@ export function renderThread(person) {
     } catch (error) {
       msg('rmsg', error.message, 'bad');
     }
+  };
+  once(form, 'submit', (event) => {
+    event.preventDefault();
+    sendIt(false);
   });
+  once(free, 'click', () => sendIt(true));
 
   renderReplyDrafting(person);
 }

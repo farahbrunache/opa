@@ -15,6 +15,14 @@ function holes(items) {
   return row;
 }
 
+const ENDED = { delivered: 'delivered', cap: 'reached 90 minutes', closed: 'closed' };
+
+function spanOf(h) {
+  if (h.closedWhy === undefined) return day(h.usedAt);
+  if (!h.closedAt) return `open since ${day(h.usedAt)}`;
+  return `${day(h.usedAt)} to ${day(h.closedAt)}, ${ENDED[h.closedWhy] || 'closed'}`;
+}
+
 function card(name, items) {
   const box = el('div', null, 'ccard');
   const head = el('div', null, 'chead');
@@ -22,7 +30,7 @@ function card(name, items) {
   head.append(el('b', name, 'ccardname'), el('small', `${used.length} of ${items.length} used`));
   box.append(head, holes(items));
   if (used.length) {
-    box.append(el('p', `Used for: ${used.map((h) => `${h.usedFor || 'a session'} (${day(h.usedAt)})`).join(', ')}.`, 'cfine'));
+    box.append(el('p', `Used for: ${used.map((h) => `${h.usedFor || 'a session'} (${spanOf(h)})`).join(', ')}.`, 'cfine'));
   }
   return box;
 }

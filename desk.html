@@ -259,7 +259,7 @@
     </div>
 
     <nav class="jump" aria-label="Sections">
-      <a href="#brief" id="jumpbrief" hidden>Brief</a><a href="#messages">Messages</a><a href="#call">Calls</a><a href="#catchups">Catch-ups</a><a href="#steps">Next steps</a><a href="#milestones">Roadmap</a><a href="#questions">Questions</a><a href="#quotes">Sessions</a><a href="#matches">People</a><a href="#intros">Introductions</a><a href="#skills">Skills</a><a href="#progress">Progress</a><a href="#log">Activity log</a>
+      <a href="#brief" id="jumpbrief" hidden>Brief</a><a href="#messages">Messages</a><a href="#call">Calls</a><a href="#catchups">Catch-ups</a><a href="#steps">Next steps</a><a href="#activities">Roadmap</a><a href="#questions">Questions</a><a href="#sessions">Sessions</a><a href="#matches">People</a><a href="#intros">Introductions</a><a href="#skills">Skills</a><a href="#progress">Progress</a><a href="#log">Activity log</a>
     </nav>
 
     <section class="sec" id="brief" hidden>
@@ -339,13 +339,13 @@
       </form>
     </section>
 
-    <section class="sec" id="milestones">
-      <div class="sechead"><h2>Roadmap</h2><span class="count" id="stepcount"></span></div>
+    <section class="sec" id="activities">
+      <div class="sechead"><h2>Roadmap</h2><span class="count" id="activitycount"></span></div>
       <div id="roadmap"></div>
       <div id="activitylist"></div>
-      <form class="searchrow" id="addstep" hidden novalidate>
-        <label class="visually-hidden" for="steptitle">Add an activity</label>
-        <textarea id="steptitle" rows="1" maxlength="300" placeholder="Add an activity · it starts in Drafted"></textarea>
+      <form class="searchrow" id="addactivity" hidden novalidate>
+        <label class="visually-hidden" for="activitytitle">Add an activity</label>
+        <textarea id="activitytitle" rows="1" maxlength="300" placeholder="Add an activity · it starts in Drafted"></textarea>
         <button type="submit" class="btn">Add</button>
       </form>
     </section>
@@ -372,8 +372,8 @@
       <div class="pages" id="qpager" hidden></div>
     </section>
 
-    <section class="sec" id="quotes">
-      <div class="sechead"><h2>Sessions</h2><span class="count" id="quotenote"></span></div>
+    <section class="sec" id="sessions">
+      <div class="sechead"><h2>Sessions</h2><span class="count" id="sessionnote"></span></div>
       <div id="sessioncard"></div>
       <div class="pair" id="sessionuse"></div>
       <div class="box" id="accessbox" hidden>

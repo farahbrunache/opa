@@ -302,18 +302,18 @@ check('it hands out exactly the number of starts there are', won === MAX, won);
 
 console.log('one plan in force');
 const planned = await newOrder();
-await tagged`insert into plans (order_id, path) values (${planned}, 'reach')`;
+await tagged`insert into plans (order_id, goal) values (${planned}, 'reach')`;
 let second = null;
 try {
-  await tagged`insert into plans (order_id, path) values (${planned}, 'smallest')`;
+  await tagged`insert into plans (order_id, goal) values (${planned}, 'smallest')`;
 } catch (error) {
   second = error.message;
 }
 check('the database refuses a second plan in force', second !== null);
 await tagged`update plans set in_force = false where order_id = ${planned}`;
-await tagged`insert into plans (order_id, path) values (${planned}, 'smallest')`;
-const inForce = await tagged`select path from plans where order_id = ${planned} and in_force`;
-check('and takes the new one once the old is retired', inForce[0]?.path === 'smallest', inForce);
+await tagged`insert into plans (order_id, goal) values (${planned}, 'smallest')`;
+const inForce = await tagged`select goal from plans where order_id = ${planned} and in_force`;
+check('and takes the new one once the old is retired', inForce[0]?.goal === 'smallest', inForce);
 
 console.log('the funnel');
 const account = 'user_invented_for_this_test';
@@ -494,10 +494,10 @@ check('two orders under one account are one case',
 check('an account has exactly one case, however often it is asked for',
   (await caseForAccount('acct-two-orders')) === theirCase);
 
-await tagged`insert into plans (order_id, case_id, path) values (${firstBuy}, ${theirCase}, 'reach')`;
+await tagged`insert into plans (order_id, case_id, goal) values (${firstBuy}, ${theirCase}, 'reach')`;
 let refused = null;
 try {
-  await tagged`insert into plans (order_id, case_id, path) values (${secondBuy}, ${theirCase}, 'smallest')`;
+  await tagged`insert into plans (order_id, case_id, goal) values (${secondBuy}, ${theirCase}, 'smallest')`;
 } catch (error) { refused = error.message; }
 check('one person cannot be on two paths at once', refused !== null, refused);
 

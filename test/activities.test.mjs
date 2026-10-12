@@ -93,17 +93,17 @@ check('not under a drafted one',
 check('and loose work is still taken on',
   (await owner('POST', 'work-take', { id: order, title: 'Invented loose work' })).status === 201);
 me = await person(order);
-const work = me.projects.find((w) => w.title === 'Invented work');
+const work = me.work.find((w) => w.title === 'Invented work');
 check('the row knows its activity', work.activityId === one.id && work.state === 'to do', work);
 check('the client sees Farah is working on her part', (await page()).roadmap[0].yours === true);
 check('a state it does not know is refused',
-  (await owner('POST', 'work-move', { id: order, projectId: work.id, state: 'delivered' })).status === 400);
-check('done stamps the day', (await owner('POST', 'work-move', { id: order, projectId: work.id, state: 'done' })).status === 200
-  && (await person(order)).projects.find((w) => w.id === work.id).doneAt !== null);
-await owner('POST', 'work-move', { id: order, projectId: work.id, state: 'doing' });
-await tagged`update projects set due_at = now() - interval '3 days' where id = ${work.id}`;
+  (await owner('POST', 'work-move', { id: order, workId: work.id, state: 'delivered' })).status === 400);
+check('done stamps the day', (await owner('POST', 'work-move', { id: order, workId: work.id, state: 'done' })).status === 200
+  && (await person(order)).work.find((w) => w.id === work.id).doneAt !== null);
+await owner('POST', 'work-move', { id: order, workId: work.id, state: 'doing' });
+await tagged`update work set due_at = now() - interval '3 days' where id = ${work.id}`;
 first = await today();
-check('late work of yours is on the first screen, as before', first.owing.some((r) => Number(r.projectId) === work.id), first.owing);
+check('late work of yours is on the first screen, as before', first.owing.some((r) => Number(r.workId) === work.id), first.owing);
 
 console.log('done and dropped');
 check('dropping needs a reason', (await owner('POST', 'activity-drop', { id: order, activityId: two.id })).status === 400);
@@ -125,7 +125,7 @@ const done = me.activities.find((a) => a.id === one.id);
 check('with no reminder left on it', done.state === 'done' && done.outcome === 'Invented outcome.' && done.nextAt === null, done);
 check('the done one is in their Done list, with its date', (await page()).roadmap.find((a) => a.id === one.id)?.group === 'done'
   && (await page()).roadmap.find((a) => a.id === one.id).at !== null);
-check('the meta carries what was yours', done.sessionsUsed === 0 && me.projects.filter((w) => w.activityId === one.id).length === 1);
+check('the meta carries what was yours', done.sessionsUsed === 0 && me.work.filter((w) => w.activityId === one.id).length === 1);
 await owner('POST', 'activity-outcome', { id: order, activityId: one.id, outcome: 'Changed outcome.' });
 check('the outcome can be changed later', (await person(order)).activities.find((a) => a.id === one.id).outcome === 'Changed outcome.');
 check('back to To do works', (await owner('POST', 'activity-reopen', { id: order, activityId: one.id })).status === 200);
@@ -187,7 +187,7 @@ console.log('the redraw grammar');
 
 console.log('a redraw decided, with a skip reason');
 {
-  await owner('POST', 'plan', { id: order, path: 'smallest' });
+  await owner('POST', 'plan', { id: order, goal: 'smallest' });
   const [plan] = await tagged`select id from plans where case_id = ${caseId} and in_force`;
   me = await person(order);
   const drafted = me.activities.find((a) => a.state === 'drafted') || null;
@@ -226,7 +226,7 @@ console.log('a redraw decided, with a skip reason');
     (await owner('POST', 'roadmap-decide', { id: order, draft: id, index: 2, decision: 'accept' })).status === 409);
   const trail = (await tagged`select kind, detail_encrypted from case_events where order_id = ${order}`).map((r) => r.kind);
   check('every step is on the trail', ['activity.added', 'activity.moved', 'activity.dropped', 'activity.done', 'activity.asked',
-    'activity.cadence', 'roadmap.skipped', 'roadmap.accepted', 'project.taken'].every((k) => trail.includes(k)), trail);
+    'activity.cadence', 'roadmap.skipped', 'roadmap.accepted', 'work.taken'].every((k) => trail.includes(k)), trail);
   check('and nothing drafted remains', drafted === null || true);
 }
 

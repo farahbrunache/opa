@@ -141,7 +141,7 @@ console.log('introductions on the client page');
 
 console.log('your roadmap');
 {
-  const [plan] = await tagged`insert into plans (order_id, case_id, path) values (${go.id}, ${go.caseId}, 'smallest') returning id`;
+  const [plan] = await tagged`insert into plans (order_id, case_id, goal) values (${go.id}, ${go.caseId}, 'smallest') returning id`;
   const [done] = await tagged`insert into activities (case_id, plan_id, position, title_encrypted, state, shown_at, closed_at, outcome_encrypted)
                values (${go.caseId}, ${plan.id}, 100, ${encrypt('Invented activity done')}, 'done', now(), now(), ${encrypt('PRIVATE-OUTCOME')}) returning id`;
   const [open] = await tagged`insert into activities (case_id, plan_id, position, title_encrypted, state, shown_at, cadence, next_at)
@@ -150,7 +150,7 @@ console.log('your roadmap');
                values (${go.caseId}, ${plan.id}, 102, ${encrypt('Invented drafted activity')}, 'drafted')`;
   await tagged`insert into activities (case_id, plan_id, position, title_encrypted, state, drop_reason, closed_at, outcome_encrypted)
                values (${go.caseId}, ${plan.id}, 103, ${encrypt('Invented dropped activity')}, 'dropped', 'tried-it', now(), ${encrypt('PRIVATE-WHY')})`;
-  await tagged`insert into projects (case_id, activity_id, title_encrypted, state, due_at, note_encrypted)
+  await tagged`insert into work (case_id, activity_id, title_encrypted, state, due_at, note_encrypted)
                values (${go.caseId}, ${open.id}, ${encrypt('PRIVATE-WORK')}, 'to do', now() + interval '3 days', ${encrypt('PRIVATE-NOTE')})`;
   await tagged`insert into held_sessions (case_id, rate, used_at, activity_id) values (${go.caseId}, 'access', now(), ${done.id})`;
   const mine = await as('acct-cp-go', 'GET', 'mine');

@@ -27,7 +27,7 @@ import { skipPair, unskipPair } from '../lib/desk-skips.js';
 import { decideRoadmap, draftRoadmap } from '../lib/desk-roadmap.js';
 import { findMatches } from '../lib/desk-matches.js';
 import { directoryProfile } from '../lib/desk-directory.js';
-import { moveWork, setWorkDue, takeOnWork } from '../lib/desk-projects.js';
+import { moveWork, setWorkDue, takeOnWork } from '../lib/desk-work.js';
 import { today } from '../lib/desk-today.js';
 import { person } from '../lib/desk-person.js';
 import { clientPreview } from '../lib/desk-preview.js';

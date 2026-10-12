@@ -380,7 +380,7 @@ for (const file of files.filter((f) => f.endsWith('.html') || /^[^/]*\.js$/.test
   }
 }
 
-const DRAWN_AGAIN = /^desk-(record|work|contacts|actions|projects|payments|recap|gaps)\.js$/;
+const DRAWN_AGAIN = /^desk-(record|work|contacts|recap|gaps)\.js$/;
 
 for (const file of files.filter((f) => DRAWN_AGAIN.test(f.slice(ROOT.length + 1)))) {
   const name = file.slice(ROOT.length + 1);

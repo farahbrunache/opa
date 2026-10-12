@@ -1,15 +1,15 @@
 import { el, link, msg, post, weekday } from '/desk-ui.js';
 import { once, settled, wasBefore } from '/desk-after.js';
 
-const PATHS = [['reach', 'Reach past average'], ['smallest', 'Smallest number']];
+const GOALS = [['reach', 'Reach past average'], ['smallest', 'Smallest number']];
 
 export function renderPlan(person) {
   const box = document.getElementById('plan');
   box.textContent = '';
   document.getElementById('planset').textContent = person.plan ? `Set ${weekday(person.plan.setAt)}`
     : person.linkedCase ? 'Not set' : 'No account linked';
-  for (const [value, label] of PATHS) {
-    const on = Boolean(person.plan && person.plan.path === value);
+  for (const [value, label] of GOALS) {
+    const on = Boolean(person.plan && person.plan.goal === value);
     const half = el('button', label, 'plain');
     half.type = 'button';
     half.setAttribute('aria-pressed', String(on));
@@ -18,10 +18,10 @@ export function renderPlan(person) {
       once(half, 'click', async () => {
         half.disabled = true;
         try {
-          const was = person.plan?.path || null;
-          await post('plan', { id: person.id, path: value });
-          await settled(`Path set to ${label}.`,
-            was ? wasBefore('plan', { id: person.id, path: was }) : null);
+          const was = person.plan?.goal || null;
+          await post('plan', { id: person.id, goal: value });
+          await settled(`Goal set to ${label}.`,
+            was ? wasBefore('plan', { id: person.id, goal: was }) : null);
         } catch (error) {
           half.disabled = false;
           msg('rmsg', error.message, 'bad');

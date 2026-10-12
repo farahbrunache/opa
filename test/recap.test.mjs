@@ -59,7 +59,7 @@ const rows = await tagged`
 const id = Number(rows[0].id);
 
 const plan = await tagged`
-  insert into plans (order_id, case_id, path, in_force)
+  insert into plans (order_id, case_id, goal, in_force)
   values (${id}, ${caseId}, 'smallest', true) returning id`;
 const planId = Number(plan[0].id);
 await tagged`
@@ -81,7 +81,7 @@ await tagged`
   values (${Number(contact[0].id)}, ${encrypt('Asked what they pay')},
           ${encrypt('Told me to come by Friday')}, now() - interval '3 days')`;
 await tagged`
-  insert into projects (case_id, title_encrypted, state, due_at)
+  insert into work (case_id, title_encrypted, state, due_at)
   values (${caseId}, ${encrypt('Sample work item')}, 'to do', now() - interval '1 day')`;
 await tagged`
   insert into held_sessions (case_id, rate, used_at, activity_id)

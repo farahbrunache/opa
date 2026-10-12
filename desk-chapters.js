@@ -131,7 +131,7 @@ function pastChapter(person, chapter) {
 
   const shut = chapter.closedWith || { activities: [], work: [] };
   const rows = [
-    ...(shut.activities || shut.milestones || []).map((title) => [`Activity: ${title}`, 'Dropped · changed direction']),
+    ...(shut.activities || []).map((title) => [`Activity: ${title}`, 'Dropped · changed direction']),
     ...shut.work.map((title) => [`Yours: ${title}`, 'Dropped']),
   ];
   if (rows.length) {
@@ -346,7 +346,7 @@ export function openPivot(person, from = null) {
   const contacts = (person.contacts || []).filter(inThis);
   const waiting = (person.introductions || []).filter((i) => i.outcome === 'waiting').length;
   const openSteps = (person.activities || []).filter((a) => ['todo', 'drafted'].includes(a.state)).length;
-  const openWork = (person.projects || []).filter((w) => !w.doneAt && w.state !== 'dropped').length;
+  const openWork = (person.work || []).filter((w) => !w.doneAt && w.state !== 'dropped').length;
   const sessionsLeft = (person.orders || []).filter((o) => !o.calledAt).length;
 
   const list = document.getElementById('pivotcarry');

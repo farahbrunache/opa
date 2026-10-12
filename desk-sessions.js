@@ -83,7 +83,7 @@ function accessLines(person, sessions) {
 
 export function renderSessions(person) {
   const sessions = person.sessions;
-  const note = document.getElementById('quotenote');
+  const note = document.getElementById('sessionnote');
   const where = document.getElementById('sessioncard');
   where.textContent = '';
   if (!person.linkedCase) {

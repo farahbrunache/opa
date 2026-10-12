@@ -31,24 +31,6 @@ services:
         sync: false
       - key: SWEEP_SECRET
         sync: false
-      - key: DRAFT_MODEL_A_NAME
-        sync: false
-      - key: DRAFT_MODEL_A_URL
-        sync: false
-      - key: DRAFT_MODEL_A_KEY
-        sync: false
-      - key: DRAFT_MODEL_B_NAME
-        sync: false
-      - key: DRAFT_MODEL_B_URL
-        sync: false
-      - key: DRAFT_MODEL_B_KEY
-        sync: false
-      - key: DRAFT_MODEL_C_NAME
-        sync: false
-      - key: DRAFT_MODEL_C_URL
-        sync: false
-      - key: DRAFT_MODEL_C_KEY
-        sync: false
       - key: RUNPOD_API_KEY
         sync: false
       - key: TAXONOMY_URL

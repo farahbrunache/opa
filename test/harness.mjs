@@ -36,3 +36,9 @@ export async function seedPrompts() {
   const { encrypt } = await import('../lib/crypto.js');
   for (const name of PROMPTS) await writeChoice(`prompt:${name}`, encrypt(`Invented ${name} text.`));
 }
+
+export async function useSlot(slot, endpointId, model) {
+  const { writeChoice } = await import('../lib/settings.js');
+  await writeChoice(`slot:endpoint:${slot}`, endpointId || '');
+  await writeChoice(`slot:model:${slot}`, model || '');
+}

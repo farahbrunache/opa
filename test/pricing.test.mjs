@@ -1,13 +1,8 @@
 import { Readable } from 'node:stream';
-import { check, db, failureCount, tagged } from './harness.mjs';
+import { check, db, failureCount, tagged, useSlot } from './harness.mjs';
 
 process.env.ADMIN_ACCOUNT_IDS = 'admin-1';
-process.env.DRAFT_MODEL_A_URL = 'https://invented-a.example';
-process.env.DRAFT_MODEL_A_KEY = 'invented-key-a';
-process.env.DRAFT_MODEL_A_NAME = 'Invented Luna';
-process.env.DRAFT_MODEL_B_URL = 'https://invented-b.example';
-process.env.DRAFT_MODEL_B_KEY = 'invented-key-b';
-process.env.DRAFT_MODEL_B_NAME = 'Invented Sol';
+process.env.RUNPOD_API_KEY = 'invented-key';
 const { signSession } = await import('../lib/crypto.js');
 const desk = (await import('../api/desk.js')).default;
 const costsApi = (await import('../api/costs.js')).default;
@@ -17,6 +12,8 @@ const sessions = await import('../lib/sessions.js');
 const { draftCost } = await import('../lib/costs.js');
 
 await db.ensureSchema();
+await useSlot('A', 'invented-a', 'Invented Luna');
+await useSlot('B', 'invented-b', 'Invented Sol');
 
 const cookie = `op_session=${signSession('admin-1')}`;
 async function ask(endpoint, method, url, payload) {
@@ -35,17 +32,17 @@ const owner = (action, payload) => ask(desk, 'POST', `/api/desk?action=${action}
 
 console.log('');
 console.log('a slot per button');
-check('every button starts on the first slot that is set up',
-  (await drafts.familiesNow()).every((b) => b.inUse === 'A' && b.chosen === null));
+check('every button starts on its tier, C falling to B while C is empty',
+  (await drafts.familiesNow()).every((b) => b.inUse === (b.tier === 'A' ? 'A' : 'B') && b.chosen === b.tier));
 check('a button it does not know is refused', (await owner('model', { slot: 'B', for: 'invented' })).status === 400);
 check('a slot that is not set up is refused', (await owner('model', { slot: 'C', for: 'roadmap' })).status === 409);
-const moved = await owner('model', { slot: 'B', for: 'roadmap' });
-check('the roadmap moves to slot B', moved.status === 200 && moved.out.for === 'roadmap' && moved.out.chosen === 'B', moved.out);
+const moved = await owner('model', { slot: 'A', for: 'roadmap' });
+check('the roadmap moves to slot A', moved.status === 200 && moved.out.for === 'roadmap' && moved.out.chosen === 'A', moved.out);
 const now = await drafts.familiesNow();
-check('and only the roadmap', now.find((b) => b.family === 'roadmap').inUse === 'B'
-  && now.find((b) => b.family === 'reply').inUse === 'A', now);
-check('the record picker sets the sheet alone', (await owner('model', { slot: 'B' })).out.for === 'sheet'
-  && (await drafts.slotFor('sheet')) === 'B' && (await drafts.slotFor('recap')) === null);
+check('and only the roadmap', now.find((b) => b.family === 'roadmap').inUse === 'A'
+  && now.find((b) => b.family === 'reply').inUse === 'B', now);
+check('the record picker sets the sheet alone', (await owner('model', { slot: 'A' })).out.for === 'sheet'
+  && (await drafts.slotFor('sheet')) === 'A' && (await drafts.slotFor('recap')) === 'A' && (await drafts.slotFor('reply')) === 'B');
 check('a kind names its family', drafts.familyOf('fields:brief') === 'fields' && drafts.familyOf(null) === 'sheet'
   && drafts.familyOf('gaps:c-1') === 'gaps');
 

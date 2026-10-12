@@ -979,6 +979,8 @@ input.code-field::placeholder {
   line-height: 1;
 }
 .inside .pair { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.inside .slotpick { display: flex; gap: 0.5rem; margin-top: 0.5rem; min-width: 0; }
+.inside .slotpick select { flex: 1; min-width: 0; text-overflow: ellipsis; }
 .inside .btn.off { flex-wrap: wrap; white-space: normal; text-align: left; }
 .inside .btn .offstate { flex-basis: 100%; font-size: 0.75rem; font-weight: 500; color: var(--faint); text-align: center; }
 

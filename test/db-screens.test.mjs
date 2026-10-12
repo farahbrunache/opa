@@ -1,4 +1,4 @@
-import { check, db, failureCount, seedPrompts, tagged } from './harness.mjs';
+import { check, db, failureCount, seedPrompts, tagged, useSlot } from './harness.mjs';
 
 await db.ensureSchema();
 await seedPrompts();
@@ -173,9 +173,8 @@ globalThis.fetch = async (url) => {
   return { ok: true, status: 200, text: async () => JSON.stringify(body) };
 };
 
-process.env.DRAFT_MODEL_A_URL = 'https://runpod.invalid/v2/fake';
-process.env.DRAFT_MODEL_A_KEY = 'not-a-real-key';
-process.env.DRAFT_MODEL_A_NAME = 'llama-test';
+process.env.RUNPOD_API_KEY = 'not-a-real-key';
+await useSlot('A', 'fake', 'llama-test');
 
 async function pressDraft() {
   const { Readable } = await import('node:stream');

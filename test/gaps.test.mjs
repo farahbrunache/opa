@@ -1,12 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
-import { check, db, failureCount, seedPrompts, tagged } from './harness.mjs';
+import { check, db, failureCount, seedPrompts, tagged, useSlot } from './harness.mjs';
 
 process.env.ADMIN_ACCOUNT_IDS = 'admin-1';
 const { encrypt, decrypt, signSession } = await import('../lib/crypto.js');
 const { gapNotes, readGaps, GAPS_TO_FIND } = await import('../lib/desk-gaps.js');
 const desk = (await import('../api/desk.js')).default;
 await db.ensureSchema();
+await useSlot('A', 'a-test-endpoint', 'a-test-model');
 await seedPrompts();
 
 const cookie = `op_session=${signSession('admin-1')}`;
@@ -91,9 +92,7 @@ check('a reason on the same line is read too', read[1].reason === 'twice a month
 check(`no more than ${GAPS_TO_FIND}`, read.length === GAPS_TO_FIND, read.length);
 
 console.log('saved, sealed, newest first');
-process.env.DRAFT_MODEL_A_NAME = 'a-test-model';
-process.env.DRAFT_MODEL_A_URL = 'https://api.runpod.ai/v2/a-test-endpoint';
-process.env.DRAFT_MODEL_A_KEY = 'a-test-key';
+process.env.RUNPOD_API_KEY = 'a-test-key';
 const realSetTimeout = globalThis.setTimeout;
 globalThis.setTimeout = (run, ms, ...rest) => realSetTimeout(run, ms === 1_500 ? 0 : ms, ...rest);
 let answer = '';

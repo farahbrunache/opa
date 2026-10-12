@@ -13,17 +13,20 @@ import { introduce, recordIntroduction } from '../lib/desk-introductions.js';
 import { chooseModel, writeDraft } from '../lib/desk-drafts.js';
 import { aiCheck, aiCheckSave } from '../lib/desk-ai.js';
 import { draftResult, markUsed } from '../lib/draft-jobs.js';
-import { addMilestone, recordMilestone, setPlan } from '../lib/desk-plan.js';
-import { addAction, pushAction, recordAction, setCadence } from '../lib/desk-actions.js';
+import { setPlan } from '../lib/desk-plan.js';
+import {
+  addActivity, dropActivity, moveToTodo, pushActivity, recordDone, reopenActivity, saveOutcome, setCadence,
+} from '../lib/desk-activities.js';
+import { useSession } from '../lib/desk-sessions.js';
 import { addContact, moveContact, reachOut } from '../lib/desk-contacts.js';
 import {
   addQuestion, deleteQuestion, importQuestions, draftQuestions, editQuestion, listQuestions, markAsked,
+  passQuestion,
 } from '../lib/desk-questions.js';
 import { skipPair, unskipPair } from '../lib/desk-skips.js';
-import { decideRoadmap, draftRoadmap, markSent, showMilestone } from '../lib/desk-roadmap.js';
+import { decideRoadmap, draftRoadmap } from '../lib/desk-roadmap.js';
 import { findMatches } from '../lib/desk-matches.js';
 import { directoryProfile } from '../lib/desk-directory.js';
-import { recordPayment, setQuoteDue } from '../lib/desk-payments.js';
 import { moveWork, setWorkDue, takeOnWork } from '../lib/desk-projects.js';
 import { today } from '../lib/desk-today.js';
 import { person } from '../lib/desk-person.js';
@@ -40,10 +43,9 @@ import { queue } from '../lib/desk-queue.js';
 import { demoClear, demoSeed, markMine } from '../lib/desk-demo.js';
 import { block, close, recommendationDone, unblock } from '../lib/desk-state.js';
 import { decideInChapter, editChapter, pivot } from '../lib/desk-chapters.js';
-import { recommendInChapter } from '../lib/chapter-steps.js';
+import { recommendInChapter, syncStepsFor } from '../lib/chapter-steps.js';
 import { flag, referralTree, setBroughtBy, unflag } from '../lib/referrals.js';
 import { agentScript, callRecord } from '../lib/desk-voice.js';
-import { moveQuote, quoteWorth, writeQuote } from '../lib/desk-quotes.js';
 import { listPrompts, savePrompt } from '../lib/prompts.js';
 
 function needsCase(caseId) {
@@ -124,6 +126,10 @@ async function postSteps(id) {
   return 1;
 }
 
+async function stepsOntoRoadmap(id) {
+  await syncStepsFor(id);
+}
+
 async function decide(req, res) {
   requireAdmin(req);
   await ensureSchema();
@@ -152,6 +158,7 @@ async function decide(req, res) {
   }
   await record(id, 'decided', `${decision}. ${String(body.note || '').trim()}`.trim());
   const opened = decision === 'go' ? await openTheConversation(id, await postSteps(id)) : false;
+  if (decision === 'go') await stepsOntoRoadmap(id);
   send(res, 200, { ok: true, decision, opened });
 }
 
@@ -181,6 +188,7 @@ async function recommend(req, res) {
   await markUsed(id, null);
   await record(id, 'recommended', 'Written.');
   const opened = await openTheConversation(id, await postSteps(id));
+  await stepsOntoRoadmap(id);
   send(res, 201, { ok: true, opened });
 }
 
@@ -210,8 +218,7 @@ async function reply(req, res) {
   else await markUsed(id, 'reply');
   if (fromTemplate) await record(id, 'message.template', text);
   const asked = auto ? 0 : await markAsked(id, body.questions);
-  const sent = auto ? 0 : await markSent(id, body.actions);
-  send(res, 201, { ok: true, asked, sent });
+  send(res, 201, { ok: true, asked });
 }
 
 async function addNote(req, res) {
@@ -244,14 +251,15 @@ const ACTIONS = {
   POST: {
     decide,
     plan: setPlan,
-    'milestone-add': addMilestone,
-    'milestone-record': recordMilestone,
-    'action-add': addAction,
-    'action-record': recordAction,
-    'action-push': pushAction,
-    'action-cadence': setCadence,
-    'quote-due': setQuoteDue,
-    'quote-paid': recordPayment,
+    'activity-add': addActivity,
+    'activity-done': recordDone,
+    'activity-outcome': saveOutcome,
+    'activity-reopen': reopenActivity,
+    'activity-drop': dropActivity,
+    'activity-move': moveToTodo,
+    'activity-push': pushActivity,
+    'activity-cadence': setCadence,
+    'session-use': useSession,
     'work-take': takeOnWork,
     'work-move': moveWork,
     'work-due': setWorkDue,
@@ -262,9 +270,6 @@ const ACTIONS = {
     recommend,
     draft: writeDraft,
     model: chooseModel,
-    quote: writeQuote,
-    'quote-move': moveQuote,
-    'quote-worth': quoteWorth,
     introduce,
     'introduction-record': recordIntroduction,
     'first-customer': firstCustomer,
@@ -281,11 +286,11 @@ const ACTIONS = {
     'question-add': addQuestion,
     'question-edit': editQuestion,
     'question-delete': deleteQuestion,
+    'question-pass': passQuestion,
     'questions-import': importQuestions,
     'questions-draft': draftQuestions,
     'roadmap-draft': draftRoadmap,
     'roadmap-decide': decideRoadmap,
-    'milestone-show': showMilestone,
     skip: skipPair,
     unskip: unskipPair,
     'find-matches': findMatches,

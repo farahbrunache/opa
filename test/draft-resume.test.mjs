@@ -159,7 +159,7 @@ console.log('a job left in flight by a restart is picked up again');
   statusAnswer = () => ({ status: 'IN_QUEUE' });
   const [orphan] = await tagged`
     insert into drafts (order_id, slot, model, job_id, kind)
-    values (${order}, 'A', 'a-test-model', 'left-behind', 'quote') returning id`;
+    values (${order}, 'A', 'a-test-model', 'left-behind', 'summary') returning id`;
   await tagged`insert into draft_jobs (draft_id, context_encrypted) values (${orphan.id}, ${encrypt('{}')})`;
   const resumed = await jobs.sweep();
   check('the sweep follows it', resumed === 1, resumed);
@@ -176,15 +176,15 @@ console.log('');
 console.log('two followers of one job store one result');
 {
   statusAnswer = () => ({ status: 'IN_QUEUE' });
-  const pressed = await desk('POST', 'quote-worth', { id: order });
+  const pressed = await desk('POST', 'draft', { id: order });
   check('a press', pressed.status === 202, pressed);
   const firstFollower = jobs.settleAll();
   jobs.forgetFollows();
   check('a restart sweep starts a second follower', (await jobs.sweep()) === 1);
-  statusAnswer = () => ({ status: 'COMPLETED', output: { content: 'Worth more than the going rate.' } });
+  statusAnswer = () => ({ status: 'COMPLETED', output: { content: '1. Worth more than the going rate.' } });
   await Promise.all([firstFollower, jobs.settleAll()]);
   const out = await result(pressed.out.draftId);
-  check('one result is ready', out.state === 'ready' && out.payload.content === 'Worth more than the going rate.', out);
+  check('one result is ready', out.state === 'ready' && out.payload.content === '1. Worth more than the going rate.', out);
   check('one result row', (await tagged`select 1 from draft_jobs where draft_id = ${pressed.out.draftId}`).length === 1);
   check('and the worker is charged once',
     (await tagged`select 1 from spend where source = ${`draft:${pressed.out.draftId}`}`).length === 1);

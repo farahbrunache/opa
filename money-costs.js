@@ -37,7 +37,7 @@ function renderAnswer(data) {
   ledgerLine(ledger, 'Running the project', `−${exact(v.runningTheProject)}`);
   const fromSessions = v.sessions * data.sessionPrice;
   document.getElementById('camefrom').textContent = `Came in: ${money(fromSessions)} from `
-    + `${v.sessions} session${v.sessions === 1 ? '' : 's'}, ${money(v.tookIn - fromSessions)} from paid work.`;
+    + `${v.sessions} call${v.sessions === 1 ? '' : 's'}, ${money(v.tookIn - fromSessions)} from sessions bought.`;
 }
 
 function renderWeeks(data) {
@@ -76,7 +76,6 @@ function renderGap(data) {
     say(`${c.sessions} more session${c.sessions === 1 ? '' : 's'}`,
       `At ${money(c.perSessionLeft)} left over each, across the same ${data.verdict.days} days`);
   }
-  say(`One piece of paid work at ${money(c.oneQuote)}`, 'Covering all of it on its own');
   if (c.perMonth !== null) say(`${money(c.perMonth)} a month less going out`, 'Spending less');
 }
 
@@ -87,7 +86,7 @@ function renderSeven(data) {
   said.className = w.left >= 0 ? 'count ok' : 'count bad';
   const rows = document.getElementById('windowrows');
   rows.textContent = '';
-  ledgerLine(rows, 'Came in', money(w.tookIn), `${w.sessions} session${w.sessions === 1 ? '' : 's'} and paid work`);
+  ledgerLine(rows, 'Came in', money(w.tookIn), `${w.sessions} call${w.sessions === 1 ? '' : 's'} and sessions bought`);
   ledgerLine(rows, 'Serving clients', exact(w.servingClients), w.billRead
     ? `${exact(w.clientCalls)} of calls`
     : `${exact(w.clientCalls)} of calls, ${exact(w.clientDrafts)} of drafting over ${w.clientSeconds}s`);
@@ -204,7 +203,7 @@ function renderSessions(data) {
   const figures = document.getElementById('figures');
   figures.textContent = '';
   stat(figures, `Sessions sold · ${money(data.sessionsIn)}`, String(data.sessions));
-  stat(figures, `Paid work · ${money(data.quotesIn)}`, String(data.quotes));
+  stat(figures, `Sessions bought · ${money(data.boughtIn)}`, String(data.bought));
   stat(figures, 'Came in', money(data.tookIn));
   stat(figures, 'Went out, calls and drafting', exact(data.spent));
   if (data.monthlyFixed !== null) stat(figures, 'Servers a month, typed in', money(data.monthlyFixed));

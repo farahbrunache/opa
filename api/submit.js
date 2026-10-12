@@ -10,6 +10,9 @@ import {
 } from '../lib/orders.js';
 import { HttpError, handle, readJson, send } from '../lib/http.js';
 import { referralCode } from '../lib/referrals.js';
+import { accountOrNull } from '../lib/auth.js';
+import { isRate } from '../lib/desk.js';
+import { ratesNow, requestsFor } from '../lib/sessions.js';
 
 const DUPLICATE_MESSAGE =
   'That gift card has already been submitted. If you have lost your link, recover it with the ' +
@@ -41,8 +44,22 @@ export default handle('POST', async (req, res) => {
   }
   const spec = PAYMENT_METHODS[method];
 
+  const kind = body.session ? 'session' : 'call';
+  const rate = kind === 'session' ? String(body.session) : null;
+  let account = null;
+  let caseId = null;
+  let priceCents = SESSION_PRICE_CENTS;
+  if (kind === 'session') {
+    if (!isRate(rate)) throw new HttpError(400, 'A session is at the access rate or the standard rate.');
+    const rates = ratesNow();
+    if (!rates) throw new HttpError(503, "Sessions aren't on sale yet: the rates aren't set.");
+    priceCents = Math.round((rate === 'access' ? rates.access : rates.standard) * 100);
+    account = accountOrNull(req);
+    if (!account) throw new HttpError(401, 'Sign in with Skills Economy first, so the session lands on your card.');
+  }
+
   let code = null;
-  let amountCents = SESSION_PRICE_CENTS;
+  let amountCents = priceCents;
 
   if (spec.needsCode) {
     code = normalizeCardCode(body.code);
@@ -56,8 +73,9 @@ export default handle('POST', async (req, res) => {
     if (code.length > 64) throw new HttpError(400, 'That code is longer than any gift card code.');
 
     const amount = Number(body.amount);
-    if (!Number.isFinite(amount) || amount < 7 || amount > 500) {
-      throw new HttpError(400, 'Enter what the card is worth, in dollars, between 7 and 500.');
+    const least = priceCents / 100;
+    if (!Number.isFinite(amount) || amount < least || amount > Math.max(500, least)) {
+      throw new HttpError(400, `Enter what the card is worth, in dollars, between ${least} and ${Math.max(500, least)}.`);
     }
     amountCents = Math.round(amount * 100);
   }
@@ -65,6 +83,18 @@ export default handle('POST', async (req, res) => {
   const where = payTo(method);
 
   await ensureSchema();
+
+  let request = null;
+  if (kind === 'session') {
+    const [person] = await sql()`select id from cases where account_id = ${account}`;
+    if (!person) throw new HttpError(409, 'Link a session to this account first.');
+    caseId = Number(person.id);
+    if (rate === 'access') {
+      request = (await requestsFor(caseId)).find((r) => r.grantedAt
+        && (!r.orderReference || r.orderStatus === 'rejected')) || null;
+      if (!request) throw new HttpError(409, 'Request an access-rate session on your page first. It has to be given before it can be paid for.');
+    }
+  }
 
   if (!(await underLimit('submit', callerKey(req), 10, 3600))) {
     throw new HttpError(429, 'Too many submissions from here in the last hour. Try later.');
@@ -96,15 +126,19 @@ export default handle('POST', async (req, res) => {
   }
 
   try {
-    await sql()`
+    const [made] = await sql()`
       insert into orders (
         claim_token_hash, card_code_hash, card_amount_cents,
-        card_code_encrypted, payment_method, reference_code, from_code
+        card_code_encrypted, payment_method, reference_code, from_code, kind, rate,
+        client_account_id, case_id
       ) values (
         ${keyedHash(token)}, ${codeHash}, ${amountCents},
-        ${code ? encrypt(code) : null}, ${method}, ${reference}, ${fromCode}
+        ${code ? encrypt(code) : null}, ${method}, ${reference}, ${fromCode}, ${kind}, ${rate},
+        ${account}, ${caseId}
       )
+      returning id
     `;
+    if (request) await sql()`update access_requests set order_id = ${made.id} where id = ${request.id}`;
   } catch (error) {
     const message = String(error.message || '');
     if (message.includes('orders_card_code_hash_idx')) throw new HttpError(409, DUPLICATE_MESSAGE);
@@ -116,11 +150,14 @@ export default handle('POST', async (req, res) => {
   }
 
   send(res, 201, {
-    claim: `/claim?t=${token}`,
+    claim: kind === 'session' ? null : `/claim?t=${token}`,
     reference,
     method,
     label: spec.label,
     payTo: where,
     needsCode: spec.needsCode,
+    amount: amountCents / 100,
+    price: priceCents / 100,
+    session: rate,
   });
 });

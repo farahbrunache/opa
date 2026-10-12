@@ -62,14 +62,16 @@ const plan = await tagged`
   insert into plans (order_id, case_id, path, in_force)
   values (${id}, ${caseId}, 'smallest', true) returning id`;
 const planId = Number(plan[0].id);
-const step = await tagged`
-  insert into milestones (plan_id, position, title_encrypted, status)
-  values (${planId}, 1, ${encrypt('Name a rate per job')}, 'done') returning id`;
 await tagged`
-  insert into action_items (milestone_id, position, title_encrypted, status, cadence, next_at,
-                            outcome_encrypted)
-  values (${Number(step[0].id)}, 1, ${encrypt('Write the rate down')}, 'done', 'weekly',
-          now() - interval '2 days', ${encrypt('Settled on a flat rate')})`;
+  insert into activities (case_id, plan_id, position, title_encrypted, state, closed_at, outcome_encrypted)
+  values (${caseId}, ${planId}, 1, ${encrypt('Name a rate per job')}, 'done', now(), ${encrypt('Settled on a flat rate')})`;
+await tagged`
+  insert into activities (case_id, plan_id, position, title_encrypted, state, shown_at, cadence, next_at)
+  values (${caseId}, ${planId}, 2, ${encrypt('Write the rate down')}, 'todo', now(), 'weekly',
+          now() - interval '2 days')`;
+await tagged`
+  insert into activities (case_id, plan_id, position, title_encrypted, state, closed_at, drop_reason)
+  values (${caseId}, ${planId}, 3, ${encrypt('Print flyers')}, 'dropped', now(), 'tried-it')`;
 const contact = await tagged`
   insert into contacts (case_id, name_encrypted, where_encrypted, why_encrypted, status)
   values (${caseId}, ${encrypt('A hardware store')}, ${encrypt('two streets over')},
@@ -82,9 +84,9 @@ await tagged`
   insert into projects (case_id, title_encrypted, state, due_at)
   values (${caseId}, ${encrypt('Sample work item')}, 'to do', now() - interval '1 day')`;
 await tagged`
-  insert into quotes (account_id, amount_cents, scope_encrypted, status, due_at)
-  values ('acct-recap', 1300, ${encrypt('sample scope')}, 'accepted',
-          now() - interval '4 days')`;
+  insert into held_sessions (case_id, rate, used_at, activity_id)
+  values (${caseId}, 'access', now(), (select id from activities where case_id = ${caseId} and position = 1))`;
+await tagged`insert into held_sessions (case_id, rate) values (${caseId}, 'standard')`;
 await tagged`
   insert into messages (account_id, author, body_encrypted)
   values ('acct-recap', 'client', ${encrypt('Friday went well. What do I charge them?')})`;
@@ -95,18 +97,17 @@ const text = facts.lines.join('\n');
 check('the decision is in the facts', /Decision: go/.test(text), text.slice(0, 80));
 check('and the sheet it was written with', text.includes('Charge per job, not per hour.'));
 check('the plan in force is named', /Plan in force since .*smallest number/i.test(text));
-check('the milestone and its state', /Milestone 1, done: Name a rate per job/.test(text));
-check('the action under it, with what happened',
-  /Action, done: Write the rate down.*Settled on a flat rate/.test(text));
-check('and the reminder it is on', /Every week/.test(text));
+check('a done activity, with what happened', /Activity, done: Name a rate per job.*Settled on a flat rate/.test(text), text);
+check('one on their page, with its reminder', /Activity, to do, on their page: Write the rate down \(Every week.*due now\)/.test(text), text);
+check('a dropped one, with why', /Activity, dropped: Print flyers — why: Tried it, didn't work/.test(text), text);
 check('who is being approached, and where',
   /Approaching A hardware store at two streets over — talking/.test(text));
 check('what was said and what came back',
   /Asked what they pay — back: Told me to come by Friday/.test(text));
-check('work owed, and that it is past due',
-  /Work you owe them, to do: Sample work item.*past due/.test(text));
-check('the quote, unpaid and past due',
-  /Quote for sample scope: \$13\.00, accepted.*unpaid and past due/.test(text));
+check('work of yours, and that it is past due',
+  /Yours to do, to do: Sample work item.*past due/.test(text));
+check('the sessions on the card and what one went to',
+  /Sessions on their card: 2, 1 used: Name a rate per job \(access rate\)/.test(text), text);
 check('the conversation, with who wrote last',
   /The last was today, from them/.test(text) && text.includes('What do I charge them?'));
 

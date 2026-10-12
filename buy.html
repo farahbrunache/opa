@@ -25,13 +25,19 @@
 
   <header class="chero">
     <div class="cmark" aria-hidden="true">1%</div>
-    <p class="ceyebrow">One Percent · Book a session</p>
-    <h1>Seven dollars.<br>That's all we ask.</h1>
-    <p class="clede">No account, no card number, no email. Nobody asks your name or where you are.</p>
+    <p class="ceyebrow" id="eyebrow">One Percent · Book a session</p>
+    <h1 id="headline">Seven dollars.<br>That's all we ask.</h1>
+    <p class="clede" id="lede">No account, no card number, no email. Nobody asks your name or where you are.</p>
     <p class="carrived" id="arrived" hidden>Someone who's been through a session sent you this link. It works the same way: $7, then the automated call.</p>
   </header>
 
-  <ul class="promise" aria-label="What you get">
+  <div class="cerr" id="sessionsignin" hidden>
+    <b>Sign in first.</b>
+    <p>A session goes on your card, so it has to be bought while you're signed in.</p>
+    <a class="cbtn" href="/api/auth?action=start&amp;to=/">Sign in with Skills Economy</a>
+  </div>
+
+  <ul class="promise" id="promise" aria-label="What you get">
     <li><b>30</b><span>minute call</span></li>
     <li><b>8</b><span>questions you can read first</span></li>
     <li><b>0</b><span>personal details</span></li>
@@ -105,9 +111,41 @@
   import { call, showProblem } from '/problem.js';
   codeFields(['code', 'rcode']);
 
-  const from = (new URLSearchParams(location.search).get('from') || '').toUpperCase();
+  const asked = new URLSearchParams(location.search);
+  const from = (asked.get('from') || '').toUpperCase();
   const arrived = /^[A-Z0-9]{6}$/.test(from);
   document.getElementById('arrived').hidden = !arrived;
+  const session = ['access', 'standard'].includes(asked.get('session')) ? asked.get('session') : null;
+  let price = 7;
+
+  async function sessionCopy() {
+    if (!session) return;
+    document.getElementById('promise').hidden = true;
+    document.querySelector('.topbar .back').href = '/';
+    document.querySelector('.topbar .back').textContent = '← Your page';
+    document.getElementById('eyebrow').textContent = 'One Percent · Another session';
+    try {
+      const card = await call('/api/client?action=sessions', {}, 'Reading the rates');
+      if (!card.rates) throw new Error("Sessions aren't on sale yet.");
+      price = session === 'access' ? card.rates.access : card.rates.standard;
+      document.getElementById('headline').textContent = `A session at the ${session} rate: $${price}.`;
+      document.getElementById('lede').textContent = 'Same session at either rate. The rate changes the price, not the help. '
+        + 'Once the payment is confirmed, the session goes on your card.';
+      for (const node of document.querySelectorAll('.paysteps b, .paysteps li, #amountfield .hint, #amount')) {
+        if (node.id === 'amount') node.value = String(price);
+        else node.childNodes.forEach((t) => { if (t.nodeType === 3) t.textContent = t.textContent.replaceAll('$7', `$${price}`); });
+      }
+    } catch (error) {
+      if (error.status === 401) {
+        document.getElementById('sessionsignin').hidden = false;
+        document.getElementById('buy').hidden = true;
+      } else {
+        showProblem(document.getElementById('result'), error, 'Reading the rates');
+        document.getElementById('buy').hidden = true;
+      }
+    }
+  }
+  await sessionCopy();
 
   const method = { value: '' };
   const picks = [...document.querySelectorAll('#paypick [data-pay]')];
@@ -195,7 +233,38 @@
     }, doing);
   }
 
+  function showSession(target, data) {
+    const node = box(target, 'good');
+    const price = `$${data.price}`;
+    if (data.needsCode) {
+      node.append(el('p', "Your card is in. There's nothing else to send. Once it's checked, the "
+        + `${data.session} rate session goes on your card on your page.`));
+    } else {
+      node.append(el('p', `Your order is open. Now open ${data.label} and send ${price} to the name below, `
+        + `with the 10-character code as the reference, note or message. Once it arrives, the ${data.session} `
+        + 'rate session goes on your card on your page.'));
+      const to = el('div', null, 'status-line');
+      to.append(el('div', `Send ${price} by ${data.label}`, 'label'));
+      to.append(payToNode(data.payTo));
+      node.append(to);
+    }
+    const ref = el('div', null, 'status-line');
+    ref.append(el('div', data.needsCode ? 'Your 10-character code' : 'Paste this 10-character code into the note', 'label'));
+    ref.append(el('div', data.reference, 'big-code'));
+    node.append(ref);
+    const row = el('p', null, 'actions');
+    row.append(copyButton('Copy reference', () => data.reference));
+    if (!data.needsCode) row.append(copyButton(`Copy ${data.label} details`, () => data.payTo));
+    row.append(button('Back to your page', 'cbtn', () => { location.href = '/#c-sessions'; }));
+    node.append(row);
+    node.scrollIntoView({ block: 'start' });
+  }
+
   function showOrder(target, data) {
+    if (data.session) {
+      showSession(target, data);
+      return;
+    }
     const url = new URL(data.claim, location.origin).href;
     const node = box(target, 'good');
 
@@ -253,6 +322,7 @@
         amount: document.getElementById('amount').value,
         code: document.getElementById('code').value,
         from: arrived ? from : null,
+        session,
       }, 'Placing your order');
       showOrder('result', data);
     } catch (error) {

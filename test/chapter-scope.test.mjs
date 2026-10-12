@@ -56,7 +56,7 @@ check('and the What AI reads box stays away', (await readsFor(order, account)) =
 
 const started = await press('pivot', {
   id: order, name: 'Bike repair', startedBy: 'them', brief: 'I fix bikes now.',
-  summary: 'Candles, one call, slow sales.', milestones: 'close', work: 'close', decision: 'reset',
+  summary: 'Candles, one call, slow sales.', activities: 'close', work: 'close', decision: 'reset',
 });
 check('a pivot starts Chapter 2', started.status === 201, started);
 await say('client', 'Two offices want monthly visits.', 0);

@@ -1,7 +1,7 @@
 import { day, el } from '/client-ui.js';
 
 export function chipFor(session, waiting = 'Being read') {
-  if (session.recommendations) return ['Next steps written', 'ok'];
+  if (session.recommendations) return ['Plan written', 'ok'];
   if (session.hasTranscript) return [waiting, ''];
   if (session.hasCall) return ['Nothing recorded', 'mute'];
   return ['Not started', 'mute'];
@@ -27,23 +27,10 @@ export function sessionCard(session, waiting) {
   return card;
 }
 
-export function drawSessions(section, sessions, current) {
-  const list = section.querySelector('.sessrows');
-  list.textContent = '';
-  section.querySelector('.cdate').textContent = `${sessions.length} on this account`;
-  for (const session of sessions) {
-    const row = el('li', null, session === current ? 'cur' : null);
-    const [text, tone] = chipFor(session);
-    row.append(el('b', session.reference, 'mono'), chip(text, tone), el('small', sessionLine(session)));
-    list.append(row);
-  }
-  section.hidden = false;
-}
-
-export function drawFoot(foot, session, count) {
+export function drawFoot(foot, session, approved) {
   foot.querySelector('[data-ref]').textContent = session ? session.reference : '';
   foot.querySelector('[data-ref]').parentElement.hidden = !session;
   const jump = foot.querySelector('[data-count]');
-  jump.textContent = `${count} · see all`;
-  jump.parentElement.hidden = !count;
+  jump.textContent = 'Your card';
+  jump.parentElement.hidden = !approved;
 }

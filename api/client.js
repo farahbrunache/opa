@@ -1,13 +1,13 @@
 import { caseForAccount, ensureSchema, findByClaimTokenHash, sql } from '../lib/db.js';
-import { agreedWording } from '../lib/quote-terms.js';
 import { underLimit } from '../lib/settings.js';
 import { callerKey, decrypt, encrypt, keyedHash } from '../lib/crypto.js';
 import { NAME_COOKIE, requireAccount } from '../lib/auth.js';
 import { describeStatus } from '../lib/orders.js';
-import { isQuoteAnswer } from '../lib/desk.js';
 import { HttpError, handle, readCookie, readJson, send } from '../lib/http.js';
-import { tickStep } from '../lib/client-page.js';
-import { quotesView, requireClient, sessionsView, threadView } from '../lib/client-view.js';
+import { tickActivity } from '../lib/client-page.js';
+import { cardView, requireClient, sessionsView, threadView } from '../lib/client-view.js';
+import { syncStepsFor } from '../lib/chapter-steps.js';
+import { requestAccess } from '../lib/sessions.js';
 
 async function mine(req, res) {
   const account = requireAccount(req);
@@ -44,66 +44,25 @@ async function sendMessage(req, res) {
   return thread(req, res);
 }
 
-async function quotes(req, res) {
+async function card(req, res) {
   const account = requireAccount(req);
   await ensureSchema();
-  send(res, 200, await quotesView(account));
+  send(res, 200, await cardView(account));
 }
 
-async function answerQuote(req, res) {
+async function askAccess(req, res) {
   const account = requireAccount(req);
   await ensureSchema();
-  if (!(await underLimit('client-quote', callerKey(req), 40, 3600))) {
-    throw new HttpError(429, 'That is a lot of answers in an hour. Try again later.');
+  await requireClient(account);
+  if (!(await underLimit('client-access', callerKey(req), 20, 3600))) {
+    throw new HttpError(429, "That's a lot of requests in an hour. Try again later.");
   }
-
-  const body = await readJson(req);
-  const answer = String(body.answer || '');
-  if (!isQuoteAnswer(answer)) {
-    throw new HttpError(400, 'The answer is either agreed, declined or changes asked.');
-  }
-
-  const reason = String(body.reason || '').trim().slice(0, 2000);
-  if (answer !== 'agreed' && !reason) {
-    throw new HttpError(
-      400,
-      answer === 'declined'
-        ? 'Say in a line why it is a no. Without it there is nothing to write a better one from.'
-        : 'Say in a line what needs changing. Without it there is nothing to change.',
-    );
-  }
-
-  if (answer === 'agreed' && body.accepted !== true) {
-    throw new HttpError(400, "Tick the box first. It says the work starts once it's paid and "
-      + "there's no refund after that.");
-  }
-
-  const id = Number(body.id);
-  if (!Number.isInteger(id) || id < 1) throw new HttpError(400, 'Which quote?');
-
-  const done = await sql()`
-    update quotes set
-      status = ${answer},
-      answered_at = now(),
-      reason_encrypted = ${reason ? encrypt(reason) : null},
-      agreed_terms = ${answer === 'agreed' ? agreedWording() : null},
-      updated_at = now()
-     where id = ${id} and account_id = ${account} and status = 'offered'
-     returning id
-  `;
-  if (!done.length) {
-    throw new HttpError(409, 'That quote is not one of yours, or it has already been answered.');
-  }
-
-  await sql()`
-    insert into case_events (order_id, kind, detail_encrypted)
-    select id, 'quote.answered',
-           ${encrypt(answer === 'agreed' ? `agreed. ${agreedWording()}` : `${answer}. ${reason}`.trim())}
-      from orders where client_account_id = ${account}
-     order by created_at desc limit 1
-  `;
-
-  return quotes(req, res);
+  const [person] = await sql()`select id, is_demo from cases where account_id = ${account}`;
+  if (!person) throw new HttpError(409, 'Link a session first.');
+  const out = await requestAccess(Number(person.id), Boolean(person.is_demo));
+  if (!out) throw new HttpError(503, "Access-rate sessions aren't set up yet. The standard rate still works.");
+  if (out.already) throw new HttpError(409, 'You already have a request in. Pay for it, or wait for its month.');
+  return card(req, res);
 }
 
 async function link(req, res) {
@@ -152,6 +111,7 @@ async function link(req, res) {
     await sql()`update calls set chapter_id = chapter_now(${caseId}) where order_id = any(${linked}) and chapter_id is null`;
     await sql()`update recaps set chapter_id = chapter_now(${caseId}) where order_id = any(${linked}) and chapter_id is null`;
     await sql()`update call_gaps set chapter_id = chapter_now(${caseId}) where order_id = any(${linked}) and chapter_id is null`;
+    for (const id of linked) await syncStepsFor(Number(id));
   }
   return mine(req, res);
 }
@@ -169,14 +129,14 @@ export default handle(['GET', 'POST'], async (req, res) => {
   const action = new URL(req.url, 'https://placeholder.invalid').searchParams.get('action');
   if (req.method === 'GET' && action === 'mine') return mine(req, res);
   if (req.method === 'GET' && action === 'thread') return thread(req, res);
-  if (req.method === 'GET' && action === 'quotes') return quotes(req, res);
+  if (req.method === 'GET' && action === 'sessions') return card(req, res);
   if (req.method === 'POST' && action === 'link') return link(req, res);
-  if (req.method === 'POST' && action === 'quote-answer') return answerQuote(req, res);
+  if (req.method === 'POST' && action === 'access-request') return askAccess(req, res);
   if (req.method === 'POST' && action === 'send') return sendMessage(req, res);
-  if (req.method === 'POST' && action === 'step') return tickStep(req, res);
+  if (req.method === 'POST' && action === 'activity') return tickActivity(req, res);
   throw new HttpError(
     400,
-    'Use action=mine, action=thread, action=quotes, action=link, action=send, ' +
-      'action=quote-answer or action=step.',
+    'Use action=mine, action=thread, action=sessions, action=link, action=send, ' +
+      'action=access-request or action=activity.',
   );
 });

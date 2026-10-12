@@ -53,9 +53,9 @@ export function renderBefore(root, data) {
   const session = waitingSession(data.sessions);
   if (session.hasTranscript) {
     hero(root, 'One Percent · Your session', 'Your call is being read.',
-      'A person reads the call and writes your next steps, usually within 48 hours.');
+      'A person reads the call and writes your plan, usually within 48 hours.');
     panel.append(sessionCard(session, 'Waiting to be read'));
-    panel.append(el('p', 'Nothing is needed from you. This page changes when your next steps are written.', 'ctext'));
+    panel.append(el('p', 'Nothing is needed from you. This page changes when your plan is written.', 'ctext'));
   } else if (session.hasCall) {
     hero(root, 'One Percent · Your session', "Your call didn't record anything.",
       "It ended before anything was said, so there's nothing for a person to read.");

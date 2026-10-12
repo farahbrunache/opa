@@ -61,12 +61,10 @@ check('a person has Chapter 1 from the start',
 
 await tagged`update plans set in_force = false where case_id = ${caseId}`;
 const [plan] = await tagged`insert into plans (order_id, case_id, path) values (${order}, ${caseId}, 'smallest') returning id`;
-await tagged`insert into milestones (plan_id, position, title_encrypted, status)
-             values (${plan.id}, 1, ${encrypt('Ten paid repairs')}, 'in progress')`;
-await tagged`insert into milestones (plan_id, position, title_encrypted, status)
-             values (${plan.id}, 2, ${encrypt('Done already')}, 'worked')`;
-await tagged`insert into quotes (account_id, amount_cents, scope_encrypted, status)
-             values (${account}, 4000, ${encrypt('A rate card')}, 'offered')`;
+await tagged`insert into activities (case_id, plan_id, position, title_encrypted, state, source, shown_at)
+             values (${caseId}, ${plan.id}, 1, ${encrypt('Ten paid repairs')}, 'todo', 'you', now())`;
+await tagged`insert into activities (case_id, plan_id, position, title_encrypted, state, source, shown_at, closed_at)
+             values (${caseId}, ${plan.id}, 2, ${encrypt('Done already')}, 'done', 'you', now(), now())`;
 await tagged`insert into projects (case_id, title_encrypted) values (${caseId}, ${encrypt('Write the flyer')})`;
 const [kept] = await tagged`insert into contacts (case_id, name_encrypted) values (${caseId}, ${encrypt('Ana')}) returning id`;
 await tagged`insert into contacts (case_id, name_encrypted) values (${caseId}, ${encrypt('Bo')})`;
@@ -94,7 +92,7 @@ check('it starts from their message, never one of yours',
 const started = await press('pivot', {
   id: order, name: 'Mobile repair van', startedBy: 'them', changed: 'Garage to van',
   brief: 'The van brief.', fromMessageId: Number(said.id), closingName: 'Garage', summary: 'Four repairs.',
-  contacts: [Number(kept.id)], milestones: 'close', work: 'close', decision: 'reset',
+  contacts: [Number(kept.id)], activities: 'close', work: 'close', decision: 'reset',
 });
 check('a pivot starts Chapter 2', started.status === 201 && started.out.number === 2, JSON.stringify(started));
 
@@ -108,17 +106,16 @@ check('Chapter 2 is open, from their message, with the brief',
     && two.startedBy === 'them', JSON.stringify(two));
 check('a reset leaves Chapter 2 undecided', two.decision === null);
 
-const steps = await tagged`select title_encrypted, status from milestones where plan_id = ${plan.id} order by position`;
-check('an open milestone left behind closes as changed direction', steps[0].status === 'changed direction');
-check('a finished one is left as it was', steps[1].status === 'worked');
+const steps = await tagged`select state, drop_reason from activities where plan_id = ${plan.id} order by position`;
+check('an open activity left behind is dropped as changed direction',
+  steps[0].state === 'dropped' && steps[0].drop_reason === 'changed-direction', steps[0]);
+check('a finished one is left as it was', steps[1].state === 'done');
 check('and the goal it hung off is retired, not deleted',
   (await tagged`select in_force from plans where id = ${plan.id}`)[0].in_force === false);
 const [work] = await tagged`select state from projects where case_id = ${caseId}`;
 check('open work left behind is dropped', work.state === 'dropped');
-const [quote] = await tagged`select status from quotes where account_id = ${account}`;
-check('and an open quote is withdrawn', quote.status === 'withdrawn', quote.status);
 check('Chapter 1 says what it closed with',
-  one.closedWith.milestones.includes('Ten paid repairs') && one.closedWith.work.includes('Write the flyer'),
+  one.closedWith.activities.includes('Ten paid repairs') && one.closedWith.work.includes('Write the flyer'),
   JSON.stringify(one.closedWith));
 
 const people = await tagged`select id, chapter_id from contacts where case_id = ${caseId} order by id`;

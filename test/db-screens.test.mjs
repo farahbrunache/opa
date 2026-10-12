@@ -6,6 +6,7 @@ const { caseForAccount } = db;
 
 process.env.ADMIN_ACCOUNT_IDS = 'admin-1';
 const { signSession } = await import('../lib/crypto.js');
+const { encrypt: seal } = await import('../lib/crypto.js');
 const deskEndpoint = (await import('../api/desk.js')).default;
 
 async function newOrder(overrides = {}) {
@@ -102,8 +103,6 @@ await tagged`update orders set client_account_id = 'acct-real-person', case_id =
               where id = ${realOrder}`;
 await tagged`insert into messages (account_id, author, body_encrypted)
              values ('acct-real-person', 'client', 'x')`;
-await tagged`insert into quotes (account_id, amount_cents, scope_encrypted)
-             values ('acct-real-person', 1000, 'x')`;
 await tagged`insert into calls (order_id, call_id, transcript_encrypted)
              values (${realOrder}, 'c-real-person', 'x')`;
 
@@ -141,9 +140,6 @@ check('the real case survives', realCaseLeft[0].n === 1);
 const realSaid = await tagged`
   select count(*)::int as n from messages where account_id = 'acct-real-person'`;
 check('their messages survive', realSaid[0].n === 1, realSaid[0]);
-const realQuoted = await tagged`
-  select count(*)::int as n from quotes where account_id = 'acct-real-person'`;
-check('their quotes survive', realQuoted[0].n === 1);
 const realCalls = await tagged`
   select count(*)::int as n from calls where order_id = ${realOrder}`;
 check('their call survives', realCalls[0].n === 1);
@@ -151,76 +147,6 @@ check('their call survives', realCalls[0].n === 1);
 const secondRun = await seedDemo();
 check("seeding twice works", secondRun.length === made.length, secondRun.length);
 await clearDemo();
-
-console.log('');
-console.log('a quote they answered');
-
-const { encrypt: seal } = await import('../lib/crypto.js');
-
-async function quotedOrder(account, status) {
-  const id = await newOrder();
-  await tagged`update orders set decision = 'go', decision_at = now(),
-                                 approved_as_client_at = now(),
-                                 client_account_id = ${account} where id = ${id}`;
-  await tagged`insert into quotes (account_id, amount_cents, scope_encrypted, status, answered_at)
-               values (${account}, 50000, ${seal('Set up a way to be found.')}, ${status},
-                       ${status === 'offered' ? null : new Date().toISOString()})`;
-  return id;
-}
-
-const askedForChange = await quotedOrder('acct-asked-change', 'changes asked');
-const agreedToPay = await quotedOrder('acct-agreed', 'agreed');
-const saidNo = await quotedOrder('acct-declined', 'declined');
-const stillWaiting = await quotedOrder('acct-offered', 'offered');
-
-const clock = await askToday();
-const answered = (clock.answered || []).map((r) => Number(r.id));
-check('a quote they asked to change is waiting on you',
-  answered.includes(askedForChange), answered);
-check('so is one they agreed to', answered.includes(agreedToPay), answered);
-check('one they declined is not', !answered.includes(saidNo), answered);
-check('and neither is one they have not answered', !answered.includes(stillWaiting), answered);
-check('the row says which answer it was',
-  (clock.answered.find((r) => Number(r.id) === askedForChange) || {}).status === 'changes asked');
-check('and what it was for', (clock.answered.find((r) => Number(r.id) === agreedToPay) || {}).amount === 500);
-
-const quoteEndpoint = (await import('../api/desk.js')).default;
-async function counter(orderIdValue, replaces) {
-  const req = {
-    method: 'POST', url: '/api/desk?action=quote',
-    headers: { cookie: `op_session=${signSession('admin-1')}`, 'content-type': 'application/json' },
-  };
-  const { Readable } = await import('node:stream');
-  const body = JSON.stringify({ id: orderIdValue, amount: 400, scope: 'Same work, less of it.', replaces });
-  const stream = Readable.from([body]);
-  Object.assign(req, { [Symbol.asyncIterator]: stream[Symbol.asyncIterator].bind(stream) });
-  let payload = null;
-  const res = {
-    statusCode: 200, writableEnded: false, setHeader() {}, getHeader() {},
-    end(text) { this.writableEnded = true; try { payload = JSON.parse(text); } catch { payload = text; } },
-  };
-  await quoteEndpoint(req, res);
-  return { status: res.statusCode, payload };
-}
-
-const theirs = await tagged`select id, status from quotes where account_id = 'acct-asked-change'`;
-const countered = await counter(askedForChange, Number(theirs[0].id));
-check('countering is accepted', countered.status === 201, countered);
-
-const after = await tagged`select id, amount_cents, status from quotes
-                            where account_id = 'acct-asked-change' order by id asc`;
-check('the old quote is closed', after[0].status === 'withdrawn', after.map((r) => r.status));
-check('and the new one is waiting on them',
-  after.length === 2 && after[1].status === 'offered' && Number(after[1].amount_cents) === 40000,
-  after.map((r) => [r.status, Number(r.amount_cents)]));
-
-const afterClock = await askToday();
-check('so it is off the morning screen',
-  !(afterClock.answered || []).map((r) => Number(r.id)).includes(askedForChange));
-
-const agreedRow = await tagged`select id from quotes where account_id = 'acct-agreed'`;
-const refused = await counter(agreedToPay, Number(agreedRow[0].id));
-check('an agreed quote cannot be countered away', refused.status === 409, refused);
 
 console.log('');
 console.log('a draft that was paid for');
@@ -462,8 +388,8 @@ check('and the seven dollars is what a session took in', now.sessionPrice === 7)
 {
   const closes = costs.whatClosesTheGap(
     { left: -50, sessions: 4, servingClients: 2, days: 30 }, 7, 90);
-  check('the gap is stated in sessions, one quote, and money a month',
-    closes.short === 50 && closes.oneQuote === 50 && closes.sessions === 8
+  check('the gap is stated in sessions and money a month',
+    closes.short === 50 && closes.sessions === 8
     && Math.abs(closes.perMonth - 50) < 1e-9, closes);
   check('a session counts for what is left of the seven after serving somebody',
     Math.abs(closes.perSessionLeft - 6.5) < 1e-9, closes.perSessionLeft);
@@ -472,26 +398,6 @@ check('and the seven dollars is what a session took in', now.sessionPrice === 7)
       .sessions === null);
   check('and being ahead closes no gap',
     costs.whatClosesTheGap({ left: 10, sessions: 4, servingClients: 2, days: 30 }, 7, 90) === null);
-
-  const floor = costs.breakEvenFor(
-    { spent: 2, counted: 7 }, 13);
-  check('break-even is what is left after the session covered part of it',
-    floor.breakEven === 8 && floor.theirs === 2 && floor.share === 13, floor);
-  check('and it never goes below nothing',
-    costs.breakEvenFor({ spent: 0.5, counted: 7 }, 0).breakEven === 0);
-
-  const quoted = await newOrder();
-  await tagged`insert into calls (order_id, call_id, transcript_encrypted, record_encrypted)
-               values (${quoted}, ${'c-floor-' + quoted}, ${seal('x')},
-                       ${seal(JSON.stringify({ call_cost: { combined_cost: 50 } }))})`;
-  await tagged`insert into cost_lines (name, amount_cents, share_percent, every, order_id)
-               values ('Extra research', 4000, 100, 'month', ${quoted})`;
-
-  const real = await costs.breakEvenForOrder(quoted);
-  check('a line attached to one person is part of their floor',
-    Math.abs(real.theirs - (0.5 + 40)) < 1e-9, real);
-  check('and the screen knows whether the monthly figure is there at all',
-    real.monthlyKnown === true, real);
 }
 
 console.log('');

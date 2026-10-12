@@ -123,7 +123,7 @@ function answer(route) {
     if (!state.signedIn) return refuse(401, 'Sign in with Skills Economy first.');
     if (action === 'link' || action === 'mine') return json(route, 200, minePayload());
     if (action === 'thread') return json(route, 200, threadPayload());
-    if (action === 'quotes') return json(route, 200, { quotes: [] });
+    if (action === 'sessions') return json(route, 200, { rates: null, access: null, held: [], request: null, pending: [] });
   }
   return refuse(404, `The demo has no answer for ${method} ${url.pathname}${action ? ` action=${action}` : ''}.`);
 }

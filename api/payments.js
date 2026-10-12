@@ -3,6 +3,8 @@ import { confirmSpeed } from '../lib/confirm-speed.js';
 import { requireAdmin } from '../lib/auth.js';
 import { PAYMENT_METHODS, REJECT_REASONS, normalizeReference } from '../lib/orders.js';
 import { HttpError, handle, readJson, send } from '../lib/http.js';
+import { accessNow, sessionBought } from '../lib/sessions.js';
+import { RATE_LABELS } from '../lib/desk.js';
 
 async function list(req, res) {
   requireAdmin(req);
@@ -13,6 +15,7 @@ async function list(req, res) {
   send(res, 200, {
     counts: Object.fromEntries(counts.map((c) => [c.status, c.n])),
     speed: await confirmSpeed(),
+    access: await accessNow(),
   });
 }
 
@@ -29,7 +32,7 @@ async function history(req, res) {
   const [rows, totals] = reference
     ? await Promise.all([
         sql()`
-          select id, reference_code, payment_method, card_amount_cents, status, reject_reason,
+          select id, reference_code, payment_method, card_amount_cents, status, reject_reason, kind, rate,
                  created_at, decided_at, session_starts, first_started_at, is_demo, is_mine,
                  exists (select 1 from calls c
                           where c.order_id = orders.id
@@ -44,7 +47,7 @@ async function history(req, res) {
       ])
     : await Promise.all([
         sql()`
-          select id, reference_code, payment_method, card_amount_cents, status, reject_reason,
+          select id, reference_code, payment_method, card_amount_cents, status, reject_reason, kind, rate,
                  created_at, decided_at, session_starts, first_started_at, is_demo, is_mine,
                  exists (select 1 from calls c
                           where c.order_id = orders.id
@@ -67,6 +70,8 @@ async function history(req, res) {
       reference: r.reference_code,
       method: r.payment_method,
       label: PAYMENT_METHODS[r.payment_method]?.label || 'Payment',
+      kind: r.kind,
+      rateLabel: r.kind === 'session' ? RATE_LABELS[r.rate] || r.rate : null,
       amount: r.card_amount_cents / 100,
       status: r.status,
       rejectReason: r.reject_reason ? REJECT_REASONS[r.reject_reason] || r.reject_reason : null,
@@ -124,7 +129,8 @@ async function decide(req, res) {
     returning created_at, decided_at
   `;
   if (!done.length) throw new HttpError(409, 'That order was already decided.');
-  send(res, 200, { ok: true, status: 'confirmed', ...timesOf(done[0]) });
+  const bought = await sessionBought(id);
+  send(res, 200, { ok: true, status: 'confirmed', bought, ...timesOf(done[0]) });
 }
 
 export default handle(['GET', 'POST'], async (req, res) => {

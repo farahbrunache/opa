@@ -16,7 +16,6 @@ body.client {
   --c-on-forest: #f3ecda;
   --c-seal-hi: #fffdf6;
   --c-seal-lo: #f1e6cf;
-  --c-offer-lo: #fbf4e6;
   --c-done: #eef3ec;
   --c-done-line: #b9cdbf;
   --c-you: #e9efe9;
@@ -71,7 +70,6 @@ html[data-theme="dark"] > body.client {
   --c-on-forest: #13201a;
   --c-seal-hi: #26332c;
   --c-seal-lo: #141d18;
-  --c-offer-lo: #1c2620;
   --c-done: #1b2b23;
   --c-done-line: #3c5a49;
   --c-you: #1f2f27;
@@ -115,8 +113,7 @@ html[data-theme="dark"] > body.client {
     --c-on-forest: #13201a;
     --c-seal-hi: #26332c;
     --c-seal-lo: #141d18;
-    --c-offer-lo: #1c2620;
-    --c-done: #1b2b23;
+      --c-done: #1b2b23;
     --c-done-line: #3c5a49;
     --c-you: #1f2f27;
     --c-bad: #ec9a86;
@@ -393,25 +390,19 @@ body.client .intro { display: grid; grid-template-columns: auto minmax(0, 1fr); 
 body.client .intro small { display: block; color: var(--c-brass); font-size: 0.8rem; font-weight: 600; }
 body.client .intro p { margin: 0.35rem 0 0; color: var(--c-soft); font-size: 0.95rem; }
 
-body.client .offer {
-  border: 1px solid var(--c-hair);
-  border-radius: 16px;
-  padding: 1.1rem;
-  display: grid;
-  gap: 0.9rem;
-  background: linear-gradient(180deg, var(--c-field), var(--c-offer-lo));
-}
-body.client .oprice { font-family: Newsreader, Georgia, serif; font-size: 2.6rem; line-height: 1; color: var(--c-ink); }
-body.client .oprice span { font-size: 1.2rem; vertical-align: top; color: var(--c-brass); margin-right: 2px; }
-body.client .oprice.small { font-size: 1.4rem; }
-body.client .obody { display: grid; gap: 0.25rem; }
-body.client .obody p { margin: 0; color: var(--c-soft); white-space: pre-wrap; overflow-wrap: anywhere; }
-body.client .obody small { color: var(--c-soft); }
-body.client .oacts { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-body.client .oacts .text { grid-column: 1 / -1; }
-body.client .offer.past { opacity: 0.7; display: flex; gap: 1rem; align-items: center; background: transparent; }
-body.client .ctick { display: grid; grid-template-columns: auto 1fr; gap: 0.6rem; align-items: start; font-size: 0.92rem; }
-body.client .ctick input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--c-forest); }
+body.client .ccard { display: grid; gap: 0.75rem; padding: 1rem; border: 1px solid var(--c-hair); border-radius: 16px; background: var(--c-card); }
+body.client .ccardname { font-family: Newsreader, Georgia, serif; font-size: 1.25rem; font-weight: 500; }
+body.client .choles { display: flex; flex-wrap: wrap; gap: 10px; }
+body.client .chole { width: 34px; height: 34px; display: grid; place-items: center; box-sizing: border-box; border: 1.5px dashed var(--c-brass2); border-radius: 50%; }
+body.client .chole.used { border: 0; background: var(--c-forest); color: var(--c-on-forest); }
+body.client .crate { display: grid; gap: 0.4rem; padding: 0.9rem; border: 1px solid var(--c-hair); border-radius: 14px; background: var(--c-field); }
+body.client .crate small { color: var(--c-soft); }
+body.client .crate .cbtn { justify-self: start; }
+body.client .cprice { font-family: Newsreader, Georgia, serif; font-size: 1.4rem; font-weight: 500; }
+body.client .tlg li .ccheck { grid-row: 1 / span 2; grid-column: 3; align-self: start; }
+body.client .tlg li { grid-template-columns: minmax(0, 1fr) auto auto; }
+body.client .tlg li small { grid-column: 1 / 3; }
+body.client .ccheck.on { background: var(--c-forest); border-color: var(--c-forest); box-shadow: inset 0 0 0 4px var(--c-card); }
 body.client .cfield { display: grid; gap: 0.35rem; }
 body.client .cfield span,
 body.client .cfield label { font-size: 0.8rem; font-weight: 600; color: var(--c-soft); }
@@ -725,12 +716,9 @@ body.client .cvideo video {
 }
 body.client .cvideo figcaption { text-align: center; color: var(--c-soft); padding: 0 0.25rem 0.25rem; }
 
-body.client .sessmini,
-body.client .sessrows li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0.6rem; }
-body.client .sessmini .cchip,
-body.client .sessrows .cchip { margin-left: auto; }
-body.client .sessmini small,
-body.client .sessrows small { flex-basis: 100%; color: var(--c-soft); font-size: 0.85rem; }
+body.client .sessmini { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0.6rem; }
+body.client .sessmini .cchip { margin-left: auto; }
+body.client .sessmini small { flex-basis: 100%; color: var(--c-soft); font-size: 0.85rem; }
 body.client .cchip {
   font-size: 0.72rem;
   font-weight: 700;
@@ -744,11 +732,7 @@ body.client .cchip {
 }
 body.client .cchip.ok { background: var(--c-chip-ok); color: var(--c-forest); }
 body.client .cchip.mute { background: var(--c-chip-mute); color: var(--c-soft); }
-body.client .sessrows { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
-body.client .sessrows li { border: 1px solid var(--c-hair); border-radius: 14px; padding: 0.75rem 0.9rem; }
-body.client .sessrows li.cur { border-color: var(--c-brass2); background: var(--c-field); }
 body.client .cfoot a { color: var(--c-forest); font-weight: 600; }
 body.client .cterms .cbtn { justify-self: start; }
-body.client .sessmini b,
-body.client .sessrows b { white-space: nowrap; }
+body.client .sessmini b { white-space: nowrap; }
 body.client .pagelink { margin: 0; font-size: 0.8rem; color: var(--c-ink); word-break: break-all; user-select: all; }

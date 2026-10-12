@@ -116,7 +116,7 @@ function pastChapter(person, chapter) {
   const line = el('div', null, 'line');
   line.append(el('span', `Decision · Chapter ${chapter.number}`, 'label'));
   line.append(el('span', decisionLabel(chapter.decision),
-    `tag ${chapter.decision === 'go' ? 't-quote' : chapter.decision === 'no-go' ? 't-owe' : 't-demo'}`));
+    `tag ${chapter.decision === 'go' ? 't-go' : chapter.decision === 'no-go' ? 't-owe' : 't-demo'}`));
   top.append(line);
 
   const calls = person.calls.filter((c) => c.fields && chapterNumber(person, c.chapterId) === chapter.number);
@@ -129,11 +129,10 @@ function pastChapter(person, chapter) {
     top.append(list);
   }
 
-  const shut = chapter.closedWith || { milestones: [], quotes: 0, work: [] };
+  const shut = chapter.closedWith || { activities: [], work: [] };
   const rows = [
-    ...shut.milestones.map((title) => [`Milestone: ${title}`, 'Changed direction']),
-    ...shut.work.map((title) => [`Work: ${title}`, 'Dropped']),
-    ...(shut.quotes ? [[`${shut.quotes} ${shut.quotes === 1 ? 'quote' : 'quotes'}`, 'Withdrawn']] : []),
+    ...(shut.activities || shut.milestones || []).map((title) => [`Activity: ${title}`, 'Dropped · changed direction']),
+    ...shut.work.map((title) => [`Yours: ${title}`, 'Dropped']),
   ];
   if (rows.length) {
     top.append(el('span', 'Closed with', 'label'));
@@ -300,7 +299,7 @@ function carryRow(label, choices, key, picked) {
   const item = el('li');
   item.append(el('span', label));
   if (choices.length === 1) {
-    item.append(el('span', choices[0][1], 'tag t-quote'));
+    item.append(el('span', choices[0][1], 'tag t-go'));
     return item;
   }
   const seg = el('div', null, 'seg small');
@@ -346,9 +345,8 @@ export function openPivot(person, from = null) {
   const inThis = (row) => chapterNumber(person, row.chapterId) === now.number;
   const contacts = (person.contacts || []).filter(inThis);
   const waiting = (person.introductions || []).filter((i) => i.outcome === 'waiting').length;
-  const openSteps = (person.milestones || []).filter((m) => ['planned', 'in progress'].includes(m.status)).length;
-  const openQuotes = (person.quotes || []).filter((q) => ['offered', 'changes asked'].includes(q.status)).length;
-  const openWork = (person.projects || []).filter((w) => !w.deliveredAt && w.state !== 'dropped').length;
+  const openSteps = (person.activities || []).filter((a) => ['todo', 'drafted'].includes(a.state)).length;
+  const openWork = (person.projects || []).filter((w) => !w.doneAt && w.state !== 'dropped').length;
   const sessionsLeft = (person.orders || []).filter((o) => !o.calledAt).length;
 
   const list = document.getElementById('pivotcarry');
@@ -359,8 +357,8 @@ export function openPivot(person, from = null) {
     list.append(carryRow(`To approach: ${contact.name}`, [['carry', 'Carry'], ['leave', 'Leave']], `contact:${contact.id}`, 'carry'));
   }
   list.append(carryRow(`Introductions waiting · ${waiting}`, [['carry', 'Carry'], ['leave', 'Leave']], 'introductions', 'carry'));
-  list.append(carryRow(`Open milestones · ${openSteps}`, [['carry', 'Carry'], ['close', 'Close']], 'milestones', 'close'));
-  list.append(carryRow(`Open quotes and work · ${openQuotes + openWork}`, [['carry', 'Carry'], ['close', 'Close']], 'work', 'close'));
+  list.append(carryRow(`Open activities · ${openSteps}`, [['carry', 'Carry'], ['close', 'Close']], 'activities', 'close'));
+  list.append(carryRow(`Open work of yours · ${openWork}`, [['carry', 'Carry'], ['close', 'Close']], 'work', 'close'));
   list.append(carryRow('Decision', [['reset', 'Reset'], ['keep', 'Keep']], 'decision', 'reset'));
 
   const form = document.getElementById('pivotsheet');
@@ -398,7 +396,7 @@ function wireSheet(person) {
         fromCallId: sheet.from?.callId ?? null,
         contacts,
         introductions: picked('introductions'),
-        milestones: picked('milestones'),
+        activities: picked('activities'),
         work: picked('work'),
         decision: picked('decision'),
       });

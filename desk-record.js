@@ -1,11 +1,10 @@
 import { renderTrades } from '/desk-trades.js';
 import { askModel, el, link, modelReady, msg, offWhen, post, weekday, owed } from '/desk-ui.js';
 import { renderPlan, renderIntroductions } from '/desk-work.js';
-import { renderQuotes } from '/desk-quotes.js';
-import { renderMilestones } from '/desk-milestones.js';
+import { renderSessions } from '/desk-sessions.js';
+import { renderActivities } from '/desk-activities.js';
 import { renderCalls } from '/desk-calls.js';
 import { renderContacts } from '/desk-contacts.js';
-import { renderWork } from '/desk-projects.js';
 import { once, resumeDraft, settled, wasBefore } from '/desk-after.js';
 import { renderThread } from '/desk-thread.js';
 import { renderRecap } from '/desk-recap.js';
@@ -230,9 +229,8 @@ export function renderPerson(person) {
   renderCalls(person);
   renderRecommendations(person);
   renderQuestions(person);
-  renderMilestones(person);
-  renderWork(person);
-  renderQuotes(person);
+  renderActivities(person);
+  renderSessions(person);
   renderContacts(person);
   renderMatches(person);
   renderIntroductions(person);

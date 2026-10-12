@@ -146,7 +146,7 @@ const onSession = async () => (await tagged`
   select session_id from step_times where order_id = ${me.order} order by id desc limit 1`)[0].session_id;
 const firstId = record.sessions.held[0].id;
 check('it opens when it goes to an activity', record.sessions.held[0].usedAt && !record.sessions.held[0].closedAt
-  && record.sessions.cap === 90, record.sessions);
+  && record.sessions.cap === null, record.sessions);
 await clockBack(10);
 await timeStep(me.order, 'activity-cadence');
 check('a step while it is open lands on it', Number(await onSession()) === firstId);
@@ -158,6 +158,8 @@ await ask(desk, 'admin-1', 'POST', `/api/desk?action=reply&on=${me.order}`, { id
 check('a reply sent in the session does', Number(await onSession()) === firstId);
 record = await person(me.order);
 check('the desk sees its minutes', record.sessions.held[0].minutes === 15, record.sessions.held[0]);
+check('the cap is a setting saved on Money', (await save({ standard: '100', access: '25', aMonth: '2', wise: 'invented-wisetag', confirmHours: '10', cap: '90' })).status === 200
+  && (await person(me.order)).sessions.cap === 90);
 await tagged`insert into held_sessions (case_id, rate) values (${me.caseId}, 'standard')`;
 await tagged`insert into step_times (order_id, step, seconds, session_id) values (${me.order}, 'note', ${85 * 60}, ${firstId})`;
 await clockBack(1);
@@ -172,8 +174,8 @@ record = await person(me.order);
 check('marking the activity done closes it as delivered', record.sessions.held[1].closedWhy === 'delivered', record.sessions.held);
 check('with nothing open there is nothing to close', (await owner('POST', 'session-close', { id: me.order, why: 'closed' })).status === 409);
 shown = (await card('acct-sess-1')).out;
-check('the client sees when each opened and closed, and why', shown.held[0].closedWhy === 'cap'
-  && shown.held[1].closedWhy === 'delivered' && shown.held[1].closedAt, shown.held);
+check('the client sees when each opened and closed, and nothing about why or how long', shown.held[0].closedAt
+  && shown.held[1].closedAt && shown.held.every((h) => !('closedWhy' in h) && !('minutes' in h)), shown.held);
 const ends = (await tagged`select kind from case_events where order_id = ${me.order} and kind = 'session.closed'`).length;
 check('both closes are on the trail', ends === 2, ends);
 

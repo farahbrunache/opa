@@ -13,6 +13,10 @@ function holes(held) {
   return row;
 }
 
+function minutesOf(h, sessions) {
+  return sessions.cap ? `${h.minutes} of ${sessions.cap} min` : `${h.minutes} min`;
+}
+
 const ENDED = { delivered: 'delivered', cap: 'time cap', closed: 'closed' };
 
 function costOf(h, hourRates) {
@@ -25,7 +29,7 @@ function useLine(h, sessions) {
   const li = el('li');
   const state = h.closedAt ? `${ENDED[h.closedWhy] || 'closed'} ${weekday(h.closedAt)}` : 'open';
   li.append(`${weekday(h.usedAt)} · `, el('b', h.usedFor || 'no activity named'),
-    ` · ${h.rateLabel.toLowerCase()} · ${h.minutes} of ${sessions.cap} min · ${state}`);
+    ` · ${h.rateLabel.toLowerCase()} · ${minutesOf(h, sessions)} · ${state}`);
   const cost = costOf(h, sessions.hourRates);
   if (cost && h.paid !== null) {
     const over = cost.high > h.paid;
@@ -133,7 +137,7 @@ export function renderSessions(person) {
   }
   const left = sessions.held.filter((h) => !h.usedAt).length;
   const live = sessions.held.find((h) => h.usedAt && !h.closedAt);
-  note.textContent = live ? `Open · ${live.minutes} of ${sessions.cap} min`
+  note.textContent = live ? `Open · ${minutesOf(live, sessions)}`
     : sessions.held.length ? `${left} of ${sessions.held.length} left` : 'No sessions on the card';
   if (sessions.held.length) where.append(card(person, sessions));
   for (const pending of sessions.pending) {

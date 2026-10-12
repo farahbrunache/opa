@@ -15,12 +15,10 @@ function holes(items) {
   return row;
 }
 
-const ENDED = { delivered: 'delivered', cap: 'reached 90 minutes', closed: 'closed' };
-
 function spanOf(h) {
-  if (h.closedWhy === undefined) return day(h.usedAt);
+  if (h.closedAt === undefined) return day(h.usedAt);
   if (!h.closedAt) return `open since ${day(h.usedAt)}`;
-  return `${day(h.usedAt)} to ${day(h.closedAt)}, ${ENDED[h.closedWhy] || 'closed'}`;
+  return `${day(h.usedAt)} to ${day(h.closedAt)}, closed`;
 }
 
 function card(name, items) {

@@ -5,6 +5,7 @@ import { chargesOf } from '../lib/costs-items.js';
 import { looksLikeReference, normalizeReference } from '../lib/orders.js';
 import { HttpError, handle, readJson, send } from '../lib/http.js';
 import { pullBillNow } from '../lib/desk-drafting-bill.js';
+import { priceNow } from '../lib/pricing.js';
 
 async function now(req, res) {
   requireAdmin(req);
@@ -12,7 +13,8 @@ async function now(req, res) {
   const figures = await costsNow();
   const rate = figures.lines.find((l) => l.every === 'draft-second');
   const charges = await chargesOf(VERDICT_DAYS, figures.lines, rate ? rate.costs : null);
-  send(res, 200, { ...figures, charges, billReader: Boolean((process.env.RUNPOD_API_KEY || '').trim()) });
+  const price = await priceNow(rate ? rate.costs : null);
+  send(res, 200, { ...figures, charges, price, billReader: Boolean((process.env.RUNPOD_API_KEY || '').trim()) });
 }
 
 async function readLine(body) {

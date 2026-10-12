@@ -29,6 +29,8 @@
     <section class="sec" id="models">
       <div class="sechead"><h2>Models</h2><span class="count" id="modelcount"></span></div>
       <ul class="list" id="slots"></ul>
+      <div class="sechead"><h3>Which slot each button uses</h3><span class="count" id="buttoncount"></span></div>
+      <ul class="list" id="buttons"></ul>
     </section>
 
     <section class="sec" id="checkall">
@@ -95,6 +97,38 @@
     document.getElementById('modelcount').textContent = `${set} of ${slots.length} set up`;
   }
 
+  function drawButtons(data) {
+    const list = document.getElementById('buttons');
+    list.textContent = '';
+    const set = data.slots.filter((s) => s.set);
+    document.getElementById('buttoncount').textContent = set.length ? `${set.length} to pick from` : 'No model set up';
+    for (const button of data.buttons) {
+      const item = el('li', null, 'item');
+      const head = el('div', null, 'line');
+      head.append(el('span', button.label, 'title'), el('span', button.inUse ? `Slot ${button.inUse}` : 'Off', 'muted'));
+      const picks = el('div', null, 'pair');
+      for (const slot of data.slots) {
+        const pick = el('button', slot.set ? `${slot.slot} · ${slot.name}` : `Slot ${slot.slot}`, 'btn ghost small');
+        pick.type = 'button';
+        if (!slot.set) offWhen(pick, true, 'Not set up');
+        pick.disabled = !slot.set || slot.slot === button.inUse;
+        pick.addEventListener('click', async () => {
+          pick.disabled = true;
+          try {
+            await post('model', { slot: slot.slot, for: button.family });
+            await draw();
+          } catch (error) {
+            pick.disabled = false;
+            msg('msg', error.message, 'bad');
+          }
+        });
+        picks.append(pick);
+      }
+      item.append(head, picks);
+      list.append(item);
+    }
+  }
+
   function resultRow(result) {
     const said = result.ok
       ? `Worked · ${result.seconds}s`
@@ -151,6 +185,7 @@
       document.getElementById('work').hidden = false;
       document.getElementById('msg').hidden = true;
       drawSlots(data.slots);
+    drawButtons(data);
       drawButton(data);
       if (!view.running) drawRun(data);
       drawPresses(data);

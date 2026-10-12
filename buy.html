@@ -130,7 +130,8 @@
       price = session === 'access' ? card.rates.access : card.rates.standard;
       document.getElementById('headline').textContent = `A session at the ${session} rate: $${price}.`;
       document.getElementById('lede').textContent = 'Same session at either rate. The rate changes the price, not the help. '
-        + 'Once the payment is confirmed, the session goes on your card.';
+        + 'Once the payment is confirmed, the session goes on your card.'
+        + (session === 'standard' ? ' The standard rate is subject to change.' : '');
       for (const node of document.querySelectorAll('.paysteps b, .paysteps li, #amountfield .hint, #amount')) {
         if (node.id === 'amount') node.value = String(price);
         else node.childNodes.forEach((t) => { if (t.nodeType === 3) t.textContent = t.textContent.replaceAll('$7', `$${price}`); });

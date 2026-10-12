@@ -67,3 +67,21 @@ services:
         sync: false
       - key: ACCESS_SESSIONS_A_MONTH
         sync: false
+      - key: OWNER_HOUR_DOLLARS_LOW
+        sync: false
+      - key: OWNER_HOUR_DOLLARS_HIGH
+        sync: false
+      - key: PAYMENT_FEE_PERCENT
+        sync: false
+      - key: DRAFT_MODEL_A_IN_PER_MILLION
+        sync: false
+      - key: DRAFT_MODEL_A_OUT_PER_MILLION
+        sync: false
+      - key: DRAFT_MODEL_B_IN_PER_MILLION
+        sync: false
+      - key: DRAFT_MODEL_B_OUT_PER_MILLION
+        sync: false
+      - key: DRAFT_MODEL_C_IN_PER_MILLION
+        sync: false
+      - key: DRAFT_MODEL_C_OUT_PER_MILLION
+        sync: false

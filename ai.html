@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI check — One Percent</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="wrap inside">
+
+  <div class="topbar">
+    <a class="back" href="/desk">&larr; Desk</a>
+    <button type="button" class="iconbtn" id="again">Refresh</button>
+  </div>
+  <h1>AI check</h1>
+
+  <div id="signin" hidden>
+    <div class="actions"><a class="button go-on" href="/api/auth?action=start&amp;to=/ai">Sign in with Skills Economy</a></div>
+  </div>
+
+  <div id="msg" hidden></div>
+
+  <div id="work" hidden>
+    <section class="sec" id="models">
+      <div class="sechead"><h2>Models</h2><span class="count" id="modelcount"></span></div>
+      <ul class="list" id="slots"></ul>
+    </section>
+
+    <section class="sec" id="checkall">
+      <div class="sechead"><h2>Every AI button</h2><span class="count" id="runat"></span></div>
+      <div class="pair">
+        <button type="button" class="btn ai paid" id="runall"><span class="coin" role="img" aria-label="Costs money" title="Costs money">$</span><span class="paidlabel">Run every AI button</span></button>
+      </div>
+      <div id="runmsg" hidden></div>
+      <ul class="list" id="results"></ul>
+    </section>
+
+    <section class="sec" id="history">
+      <div class="sechead"><h2>Recent presses</h2><span class="count" id="presscount"></span></div>
+      <ul class="list" id="presses"></ul>
+      <div class="pages" id="pager" hidden></div>
+    </section>
+  </div>
+
+</main>
+
+<script type="module">
+  import { askModel, call, el, link, msg, offWhen, post, stamp } from '/desk-ui.js';
+  import { drawnBy, settled } from '/desk-after.js';
+  import { renderPages } from '/desk-lists.js';
+
+  const view = { page: 1, data: null, running: false };
+
+  function row(name, code, said, tone, href) {
+    const box = href ? link('', href, 'prow') : el('div', null, 'prow');
+    const who = el('span', null, 'who');
+    who.append(el('span', name, 'name'));
+    if (code) who.append(el('span', code, 'code'));
+    box.append(who, el('span', said, tone ? `next ${tone}` : 'next'));
+    if (href) box.append(el('span', '→', 'chev'));
+    const item = el('li');
+    item.append(box);
+    return item;
+  }
+
+  function workers(slot) {
+    if (!slot.set) return ['Not set up', 'none'];
+    if (slot.said) return [slot.said, 'late'];
+    const w = slot.workers;
+    const j = slot.jobs;
+    const warm = (w.ready || 0) + (w.idle || 0) + (w.running || 0);
+    const parts = [
+      warm ? `Warm · ${w.ready || 0} ready · ${w.idle || 0} idle · ${w.running || 0} running` : 'Cold · no worker up',
+    ];
+    if (w.initializing) parts.push(`${w.initializing} starting`);
+    if (w.throttled) parts.push(`${w.throttled} throttled`);
+    if (w.unhealthy) parts.push(`${w.unhealthy} unhealthy`);
+    parts.push(`${j.inQueue || 0} queued · ${j.inProgress || 0} in progress · ${j.failed || 0} failed`);
+    return [parts.join(' · '), w.unhealthy || w.throttled ? 'late' : ''];
+  }
+
+  function drawSlots(slots) {
+    const list = document.getElementById('slots');
+    list.textContent = '';
+    for (const slot of slots) {
+      const [said, tone] = workers(slot);
+      list.append(row(`Slot ${slot.slot}`, slot.set ? slot.name : '', said, tone));
+    }
+    const set = slots.filter((s) => s.set).length;
+    document.getElementById('modelcount').textContent = `${set} of ${slots.length} set up`;
+  }
+
+  function resultRow(result) {
+    const said = result.ok
+      ? `Worked · ${result.seconds}s`
+      : `Failed${result.seconds !== null && result.seconds !== undefined ? ` after ${result.seconds}s` : ''} · ${result.said}`;
+    return row(result.button, result.reference || '', said, result.ok ? '' : 'late');
+  }
+
+  function drawRun(data) {
+    const list = document.getElementById('results');
+    list.textContent = '';
+    const run = data.run;
+    if (!run) {
+      document.getElementById('runat').textContent = 'Never run';
+      return;
+    }
+    const worked = run.results.filter((r) => r.ok).length;
+    document.getElementById('runat').textContent = `${worked} of ${run.results.length} worked · ${stamp(run.at)}`;
+    for (const result of run.results) list.append(resultRow(result));
+  }
+
+  function drawPresses(data) {
+    const list = document.getElementById('presses');
+    list.textContent = '';
+    document.getElementById('presscount').textContent = data.presses.length ? `Page ${data.page} of ${data.last}` : '';
+    if (!data.presses.length) list.append(el('li', 'No AI button has been pressed yet.', 'empty'));
+    for (const press of data.presses) {
+      const ran = press.seconds !== null && press.seconds !== undefined ? ` · ${press.seconds}s` : '';
+      const said = [`${press.state}${ran}`, `Slot ${press.slot} · ${press.model}`, stamp(press.at)];
+      if (press.said) said.push(press.said);
+      const item = row(press.button, `${press.reference}${press.isDemo ? ' · Demo' : ''}`,
+        said.join(' · '), press.state === 'Finished' ? '' : press.state === 'Running' ? 'none' : 'late',
+        `/desk?id=${press.orderId}`);
+      list.append(item);
+    }
+    renderPages(document.getElementById('pager'), data.page, data.last, (to) => {
+      view.page = to;
+      draw();
+    });
+  }
+
+  function drawButton(data) {
+    const button = document.getElementById('runall');
+    if (view.running) return;
+    const set = data.slots.some((s) => s.set);
+    const demo = data.checks.some((c) => !c.missing);
+    offWhen(button, !set || !demo, !set ? 'No model set up' : 'No demo data');
+  }
+
+  async function draw() {
+    try {
+      const data = await call(`/api/desk?action=ai-check&page=${view.page}`);
+      view.data = data;
+      document.getElementById('signin').hidden = true;
+      document.getElementById('work').hidden = false;
+      document.getElementById('msg').hidden = true;
+      drawSlots(data.slots);
+      drawButton(data);
+      if (!view.running) drawRun(data);
+      drawPresses(data);
+    } catch (error) {
+      if (error.status === 401) {
+        document.getElementById('signin').hidden = false;
+        document.getElementById('work').hidden = true;
+        return;
+      }
+      msg('msg', error.message, 'bad');
+    }
+  }
+
+  async function runAll() {
+    const button = document.getElementById('runall');
+    const label = button.querySelector('.paidlabel');
+    const checks = view.data.checks;
+    const runAt = new Date().toISOString();
+    const list = document.getElementById('results');
+    list.textContent = '';
+    document.getElementById('runmsg').hidden = true;
+    view.running = true;
+    button.disabled = true;
+    let worked = 0;
+    for (const check of checks) {
+      const started = Date.now();
+      const result = { button: check.button, reference: check.on, ok: false, seconds: null, said: '' };
+      if (check.missing) {
+        result.said = check.missing;
+      } else {
+        label.textContent = `${check.button}…`;
+        try {
+          await askModel(button, check.body, check.action);
+          result.ok = true;
+        } catch (error) {
+          result.said = error.message;
+        }
+        result.seconds = Math.round((Date.now() - started) / 1000);
+      }
+      if (result.ok) worked += 1;
+      list.append(resultRow(result));
+      try {
+        await post('ai-check-save', {
+          run: runAt, button: check.button, orderId: check.body?.id ?? null,
+          ok: result.ok, seconds: result.seconds, said: result.said,
+        });
+      } catch (error) {
+        msg('runmsg', `${check.button}: the result wasn't saved. ${error.message}`, 'bad');
+      }
+    }
+    label.textContent = 'Run every AI button';
+    button.disabled = false;
+    view.running = false;
+    await settled(`${worked} of ${checks.length} AI buttons worked.`);
+  }
+
+  document.getElementById('runall').addEventListener('click', () => {
+    if (!view.running && view.data) runAll();
+  });
+  document.getElementById('again').addEventListener('click', () => draw());
+
+  drawnBy(draw);
+  draw();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Question lists — One Percent</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="wrap inside">
+
+  <div class="topbar">
+    <a class="back" href="/desk">&larr; Desk</a>
+    <button type="button" class="iconbtn" id="refresh">Refresh</button>
+  </div>
+  <h1>Question lists</h1>
+
+  <div id="signin" hidden>
+    <div class="actions"><a class="button go-on" id="lgo" href="/api/auth?action=start&amp;to=/questions">Sign in with Skills Economy</a></div>
+  </div>
+
+  <div id="msg" hidden></div>
+
+  <div id="work" hidden>
+    <div class="box">
+      <span class="cap">Add questions</span>
+      <form class="fields" id="addform" novalidate>
+        <div class="field">
+          <label for="scope">Who it's for</label>
+          <select id="scope"></select>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label for="stage">Stage</label>
+            <select id="stage"></select>
+          </div>
+          <div class="field">
+            <label for="topic">Group, optional</label>
+            <input id="topic" type="text" maxlength="60" list="topics" autocomplete="off">
+            <datalist id="topics"></datalist>
+          </div>
+        </div>
+        <div class="field">
+          <label for="body">Questions, one a line</label>
+          <textarea id="body" rows="4"></textarea>
+        </div>
+        <button type="submit" class="btn primary">Add</button>
+      </form>
+    </div>
+
+    <div class="box">
+      <span class="cap">Paste a question bank</span>
+      <form class="fields" id="importform" novalidate>
+        <div class="field">
+          <label for="bank">Sector headings, job title headings, stage headings, a dash before each question</label>
+          <textarea id="bank" rows="4"></textarea>
+        </div>
+        <button type="submit" class="btn primary">Add what's new</button>
+      </form>
+    </div>
+
+    <nav class="jump" aria-label="Sectors" id="jumps"></nav>
+    <div id="stages"></div>
+  </div>
+
+</main>
+
+<script type="module">
+  import { el, link, msg, get, post } from '/desk-ui.js';
+  import { watchJumps } from '/desk-jump.js';
+  import '/desk-top.js';
+
+  let fields = 0;
+
+  const scopeValue = (q) => (q.tradeId ? `t:${q.tradeId}` : q.sectorId ? `s:${q.sectorId}` : '');
+
+  function fillScopes(select, data) {
+    select.textContent = '';
+    const everyone = el('option', 'Everyone');
+    everyone.value = '';
+    select.append(everyone);
+    for (const sector of data.sectors) {
+      const group = document.createElement('optgroup');
+      group.label = sector.name;
+      const all = el('option', `All of ${sector.name}`);
+      all.value = `s:${sector.id}`;
+      group.append(all);
+      for (const trade of sector.trades) {
+        const option = el('option', trade.title);
+        option.value = `t:${trade.id}`;
+        group.append(option);
+      }
+      select.append(group);
+    }
+  }
+
+  function scopeBody(value) {
+    if (value.startsWith('t:')) return { trade: value.slice(2) };
+    if (value.startsWith('s:')) return { sector: value.slice(2) };
+    return {};
+  }
+
+  function editor(question, data, row) {
+    const n = ++fields;
+    const form = el('form', null, 'fields');
+    form.noValidate = true;
+
+    const words = el('div', null, 'field');
+    const wordsLabel = el('label', 'Question');
+    wordsLabel.htmlFor = `ebody${n}`;
+    const body = document.createElement('textarea');
+    body.id = `ebody${n}`;
+    body.rows = 3;
+    body.maxLength = 300;
+    body.value = question.body;
+    words.append(wordsLabel, body);
+
+    const who = el('div', null, 'field');
+    const whoLabel = el('label', "Who it's for");
+    whoLabel.htmlFor = `escope${n}`;
+    const scope = document.createElement('select');
+    scope.id = `escope${n}`;
+    fillScopes(scope, data);
+    scope.value = scopeValue(question);
+    who.append(whoLabel, scope);
+
+    const where = el('div', null, 'grid2');
+    const when = el('div', null, 'field');
+    const whenLabel = el('label', 'Stage');
+    whenLabel.htmlFor = `estage${n}`;
+    const stage = document.createElement('select');
+    stage.id = `estage${n}`;
+    for (const s of data.stages) {
+      const option = el('option', s.label);
+      option.value = s.stage;
+      stage.append(option);
+    }
+    stage.value = question.stage;
+    when.append(whenLabel, stage);
+
+    const groupField = el('div', null, 'field');
+    const groupLabel = el('label', 'Group, optional');
+    groupLabel.htmlFor = `etopic${n}`;
+    const topic = document.createElement('input');
+    topic.id = `etopic${n}`;
+    topic.type = 'text';
+    topic.maxLength = 60;
+    topic.autocomplete = 'off';
+    topic.setAttribute('list', 'topics');
+    topic.value = question.topic || '';
+    groupField.append(groupLabel, topic);
+    where.append(when, groupField);
+
+    const actions = el('div', null, 'pair');
+    const save = el('button', 'Save', 'btn primary small');
+    save.type = 'submit';
+    const cancel = el('button', 'Cancel', 'btn ghost small');
+    cancel.type = 'button';
+    cancel.addEventListener('click', () => form.closest('li').replaceWith(row));
+    actions.append(save, cancel);
+
+    form.append(words, who, where, actions);
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      save.disabled = true;
+      try {
+        await post('question-edit', {
+          question: question.id, stage: stage.value, topic: topic.value, body: body.value, ...scopeBody(scope.value),
+        });
+        window.location.reload();
+      } catch (error) {
+        msg('msg', error.message, 'bad');
+        save.disabled = false;
+      }
+    });
+    const item = el('li');
+    item.append(form);
+    return item;
+  }
+
+  function questionRow(question, data) {
+    const row = el('li');
+    const words = el('span', question.body);
+    if (question.isDemo) words.append(' ', el('span', 'Demo', 'tag t-demo'));
+    const acts = el('span', null, 'acts');
+    const edit = el('button', 'Edit', 'btn ghost small');
+    edit.type = 'button';
+    edit.addEventListener('click', () => row.replaceWith(editor(question, data, row)));
+    const remove = el('button', 'Delete', 'btn danger small');
+    remove.type = 'button';
+    remove.addEventListener('click', async () => {
+      if (!window.confirm('Delete this question? Anywhere it was already asked, the conversation keeps it.')) return;
+      remove.disabled = true;
+      try {
+        await post('question-delete', { question: question.id });
+        window.location.reload();
+      } catch (error) {
+        msg('msg', error.message, 'bad');
+        remove.disabled = false;
+      }
+    });
+    acts.append(edit, remove);
+    row.append(words, acts);
+    return row;
+  }
+
+  function section(id, title, questions, data) {
+    const box = el('section', null, 'sec');
+    box.id = id;
+    const head = el('div', null, 'sechead');
+    head.append(el('h2', title),
+      el('span', `${questions.length} question${questions.length === 1 ? '' : 's'}`, 'count'));
+    box.append(head);
+    if (!questions.length) box.append(el('p', 'Nothing here yet.', 'empty'));
+    const parts = [[null, questions.filter((q) => !q.tradeId)]];
+    for (const tradeId of [...new Set(questions.filter((q) => q.tradeId).map((q) => q.tradeId))]) {
+      parts.push([questions.find((q) => q.tradeId === tradeId).scope, questions.filter((q) => q.tradeId === tradeId)]);
+    }
+    for (const [title, mine] of parts) {
+      if (!mine.length) continue;
+      if (title) box.append(el('h3', title));
+      for (const stage of data.stages) {
+        const here = mine.filter((q) => q.stage === stage.stage);
+        if (!here.length) continue;
+        box.append(el('div', stage.label, 'label grouplabel'));
+        const list = el('ul', null, 'qe');
+        for (const question of here) list.append(questionRow(question, data));
+        box.append(list);
+      }
+    }
+    return box;
+  }
+
+  function render(data) {
+    const stages = document.getElementById('stages');
+    const picker = document.getElementById('stage');
+    const jumps = document.getElementById('jumps');
+    stages.textContent = '';
+    picker.textContent = '';
+    jumps.textContent = '';
+    fillScopes(document.getElementById('scope'), data);
+    const topics = document.getElementById('topics');
+    topics.textContent = '';
+    for (const topic of data.topics) {
+      const option = document.createElement('option');
+      option.value = topic;
+      topics.append(option);
+    }
+    for (const stage of data.stages) {
+      const option = el('option', stage.label);
+      option.value = stage.stage;
+      picker.append(option);
+    }
+    const groups = [['qs-everyone', 'Everyone', data.questions.filter((q) => !q.sectorId)]];
+    data.sectors.forEach((sector, i) => {
+      groups.push([`qs-${i}`, sector.name, data.questions.filter((q) => q.sectorId === sector.id)]);
+    });
+    const listed = new Set(data.sectors.map((sector) => sector.id));
+    const gone = data.questions.filter((q) => q.sectorId && !listed.has(q.sectorId));
+    if (gone.length) groups.push(['qs-gone', 'No longer in the taxonomy', gone]);
+    for (const [id, title, questions] of groups) {
+      jumps.append(link(`${title} ${questions.length}`, `#${id}`));
+      stages.append(section(id, title, questions, data));
+    }
+  }
+
+  document.getElementById('importform').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = event.submitter;
+    if (button) button.disabled = true;
+    try {
+      const out = await post('questions-import', { text: document.getElementById('bank').value });
+      const said = [`${out.added} added`, `${out.skipped} already there`];
+      if (out.unknown.length) said.push(`not in the taxonomy copy: ${out.unknown.join('; ')}`);
+      msg('msg', said.join(' · '), out.unknown.length ? 'bad' : 'good');
+      document.getElementById('bank').value = '';
+      render(await get('questions'));
+    } catch (error) {
+      msg('msg', error.message, 'bad');
+    } finally {
+      if (button) button.disabled = false;
+    }
+  });
+
+  document.getElementById('addform').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = event.submitter;
+    if (button) button.disabled = true;
+    try {
+      await post('question-add', {
+        stage: document.getElementById('stage').value,
+        topic: document.getElementById('topic').value,
+        body: document.getElementById('body').value,
+        ...scopeBody(document.getElementById('scope').value),
+      });
+      window.location.reload();
+    } catch (error) {
+      msg('msg', error.message, 'bad');
+      if (button) button.disabled = false;
+    }
+  });
+
+  document.getElementById('refresh').addEventListener('click', () => window.location.reload());
+
+  try {
+    const data = await get('questions');
+    render(data);
+    document.getElementById('work').hidden = false;
+    watchJumps();
+  } catch (error) {
+    if (error.status === 401) {
+      document.getElementById('signin').hidden = false;
+    } else {
+      msg('msg', error.message, 'bad');
+    }
+  }
+</script>
+</body>
+</html>

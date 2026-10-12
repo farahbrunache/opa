@@ -1,0 +1,33 @@
+name: Read the drafting bill
+
+on:
+  schedule:
+    - cron: '41 5 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: read-the-drafting-bill
+  cancel-in-progress: false
+
+jobs:
+  bill:
+    name: Ask what drafting billed
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Read it
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          SWEEP_SECRET: ${{ secrets.SWEEP_SECRET }}
+        run: |
+          set -euo pipefail
+          [ -n "$APP_URL" ] || { echo "::error title=APP_URL is not set::Nothing to call."; exit 1; }
+          [ -n "$SWEEP_SECRET" ] || { echo "::error title=SWEEP_SECRET is not set::The job cannot prove itself."; exit 1; }
+
+          origin=$(printf '%s' "$APP_URL" | sed -E 's#^(https?://[^/]+).*#\1#')
+          answer=$(curl -sS --fail-with-body --max-time 120 \
+            -X POST "$origin/api/drafting-bill" \
+            -H "authorization: Bearer $SWEEP_SECRET")
+
+          days=$(printf '%s' "$answer" | sed -E 's/.*"days":([0-9]+).*/\1/')
+          echo "Days of billing written or revised: ${days:-unknown}" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Money — One Percent</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="wrap inside">
+
+  <div class="topbar">
+    <div class="titled">
+      <h1>Money</h1>
+      <p class="date" id="today"></p>
+    </div>
+    <button type="button" class="iconbtn" id="refresh">Refresh</button>
+  </div>
+  <nav class="tabs" aria-label="Desk">
+    <a href="/desk">Today</a>
+    <a href="/desk?state=waiting">Everyone</a>
+    <a href="/funnel">Funnel</a>
+    <a aria-current="page" href="/money">Money</a>
+  </nav>
+
+  <div id="signin" hidden>
+    <div class="actions"><a class="button go-on" id="lgo" href="/api/auth?action=start&amp;to=/money">Sign in with Skills Economy</a></div>
+    <div id="lmsg" hidden></div>
+  </div>
+
+  <div id="msg" hidden></div>
+
+  <div id="work" hidden>
+    <section class="sec" id="m-answer">
+      <div class="box">
+        <span class="cap">Are you underwater?</span>
+        <div class="headline" id="verdict30"><b></b><span></span></div>
+        <div class="ledger" id="ledger"></div>
+        <p class="note" id="camefrom"></p>
+      </div>
+    </section>
+
+    <nav class="jump" aria-label="Money sections">
+      <a href="#m-speed">How fast you confirm</a>
+      <a href="#m-pay">Payments</a>
+      <a href="#m-week">Week by week</a>
+      <a href="#m-costs">Running costs</a>
+      <a href="#m-sessions">Per session</a>
+    </nav>
+
+    <section class="sec" id="m-speed">
+      <div class="sechead"><h2>How fast you confirm</h2><span class="count" id="speedtarget"></span></div>
+      <div class="stat3" id="speedtiles"></div>
+      <div class="box" id="speedbox">
+        <div class="axis" aria-hidden="true"><span></span><span class="ticks"><span>0</span><span id="speedmid"></span><span id="speedend"></span></span><span></span></div>
+        <ul class="speed" id="speedrows"></ul>
+      </div>
+      <div class="tablewrap" id="speedweekswrap">
+        <table class="wk">
+          <thead>
+            <tr><th scope="col">Week</th><th scope="col">Confirmed</th><th scope="col">Typical</th>
+              <th scope="col" id="speedpast"></th></tr>
+          </thead>
+          <tbody id="speedweeks"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sec" id="m-pay">
+      <div class="sechead"><h2>Payments</h2><span class="count" id="waitingcount"></span></div>
+      <div class="stat3" id="counts"></div>
+      <a class="olink" id="ontoday" href="/desk" hidden></a>
+      <form class="searchrow" id="search" novalidate>
+        <label class="visually-hidden" for="q">Find a reference</label>
+        <input class="code-field" id="q" type="search" inputmode="latin" autocapitalize="characters"
+               autocomplete="off" placeholder="The entire reference">
+        <button type="submit" class="btn">Find</button>
+        <button type="button" class="btn ghost" id="clear">Show all</button>
+      </form>
+      <ul class="list" id="history" aria-live="polite"></ul>
+      <div class="line">
+        <span class="note" id="hcount"></span>
+        <div class="pair" id="pager" hidden>
+          <button type="button" class="btn ghost small" id="prev">Newer</button>
+          <button type="button" class="btn ghost small" id="next">Older</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="m-week">
+      <div class="sechead"><h2>Week by week</h2><span class="count" id="pattern"></span></div>
+      <div class="tablewrap">
+        <table class="wk">
+          <thead>
+            <tr><th scope="col">Week</th><th scope="col">In</th><th scope="col">Out</th>
+              <th scope="col">Left</th></tr>
+          </thead>
+          <tbody id="weeks"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sec" id="gappanel" hidden>
+      <div class="sechead"><h2>What would close it</h2></div>
+      <ul class="list" id="gap"></ul>
+    </section>
+
+    <section class="sec">
+      <div class="sechead"><h2>The last seven days</h2><span class="count" id="window"></span></div>
+      <div class="box"><div class="ledger" id="windowrows"></div></div>
+    </section>
+
+    <section class="sec">
+      <div class="sechead"><h2>Every charge in 30 days</h2><span class="count" id="chargetotal"></span></div>
+      <ul class="list" id="charges"></ul>
+    </section>
+
+    <section class="sec" id="m-costs">
+      <div class="sechead"><h2>Running costs</h2><span class="count" id="monthly"></span></div>
+      <ul class="list" id="lines"></ul>
+      <div class="box">
+        <span class="cap" id="lineformtitle">Add a cost</span>
+        <form class="fields" id="addline" novalidate>
+          <div class="grid2">
+            <div class="field">
+              <label for="linename">What is it</label>
+              <input id="linename" type="text" autocomplete="off" maxlength="120" placeholder="Render">
+            </div>
+            <div class="field">
+              <label for="lineamount">Dollars</label>
+              <input id="lineamount" type="number" inputmode="decimal" min="0" step="any" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="lineevery">Charged</label>
+              <select id="lineevery">
+                <option value="month">Every month</option>
+                <option value="draft-second">Per second of drafting</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="lineshare">Your share, of 100</label>
+              <input id="lineshare" type="number" inputmode="numeric" min="1" max="100" step="1"
+                     value="100" autocomplete="off">
+            </div>
+          </div>
+          <div class="field">
+            <label for="lineref">Client reference, empty for the product</label>
+            <input class="code-field" id="lineref" type="text" inputmode="latin"
+                   autocapitalize="characters" autocomplete="off">
+          </div>
+          <div class="pair">
+            <button type="submit" class="btn primary" id="linesave">Add it</button>
+            <button type="button" class="btn ghost" id="linecancel" hidden>Cancel</button>
+          </div>
+        </form>
+      </div>
+      <div class="item">
+        <div class="line"><span class="title">What drafting actually billed</span></div>
+        <span class="muted" id="billsays"></span>
+        <button type="button" class="btn ghost" id="pullbill">Read the bill</button>
+      </div>
+    </section>
+
+    <section class="sec" id="m-sessions">
+      <div class="sechead"><h2>Per session</h2><span class="count" id="verdict"></span></div>
+      <p class="note" id="verdictwhy"></p>
+      <div class="stat3" id="figures"></div>
+      <ul class="list" id="orders"></ul>
+    </section>
+
+    <section class="sec">
+      <div class="sechead"><h2>What is not counted</h2></div>
+      <ul class="list" id="unknown"></ul>
+    </section>
+  </div>
+
+</main>
+
+<script type="module">
+  import { call, msg } from '/desk-ui.js';
+  import { codeFields } from '/codefield.js';
+  import { loadPayments } from '/money-payments.js';
+  import { renderCosts } from '/money-costs.js';
+  import '/desk-top.js';
+  import { watchJumps } from '/desk-jump.js';
+
+  codeFields(['q', 'lineref']);
+
+  document.getElementById('today').textContent = new Date().toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric',
+  });
+
+  async function load() {
+    try {
+      const costs = await call('/api/costs?action=now');
+      renderCosts(costs);
+      await loadPayments();
+      document.getElementById('signin').hidden = true;
+      document.getElementById('work').hidden = false;
+      watchJumps();
+    } catch (error) {
+      if (error.status === 401 || /^sign in with skills economy first/i.test(error.message)) {
+        document.getElementById('work').hidden = true;
+        document.getElementById('signin').hidden = false;
+      } else {
+        msg('msg', error.message, 'bad');
+      }
+    }
+  }
+
+  document.getElementById('refresh').addEventListener('click', load);
+
+  const problem = new URLSearchParams(location.search).get('problem');
+  if (problem) {
+    history.replaceState(null, '', '/money');
+    document.getElementById('signin').hidden = false;
+    msg('lmsg', problem, 'bad');
+  } else {
+    load();
+  }
+</script>
+</body>
+</html>

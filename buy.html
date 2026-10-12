@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<script>try { var t = document.cookie.match(/(?:^|; )op_theme=(light|dark)(?:;|$)/); if (t) document.documentElement.dataset.theme = t[1]; } catch (e) {}</script>
+<title>Pay for a session — One Percent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/client.css">
+</head>
+<body class="client">
+<main class="wrap">
+
+  <div class="topbar">
+    <a class="back" href="https://farahbrunache.com">&larr; farahbrunache.com</a>
+    <div class="ctheme" role="group" aria-label="Theme">
+      <button type="button" data-pick="light" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Light</button>
+      <button type="button" data-pick="dark" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>Dark</button>
+    </div>
+  </div>
+
+  <header class="chero">
+    <div class="cmark" aria-hidden="true">1%</div>
+    <p class="ceyebrow">One Percent · Book a session</p>
+    <h1>Seven dollars.<br>That's all we ask.</h1>
+    <p class="clede">No account, no card number, no email. Nobody asks your name or where you are.</p>
+    <p class="carrived" id="arrived" hidden>Someone who's been through a session sent you this link. It works the same way: $7, then the automated call.</p>
+  </header>
+
+  <ul class="promise" aria-label="What you get">
+    <li><b>30</b><span>minute call</span></li>
+    <li><b>8</b><span>questions you can read first</span></li>
+    <li><b>0</b><span>personal details</span></li>
+  </ul>
+
+  <form class="cpanel" id="buy" novalidate>
+    <p class="clabel" id="picklabel">How would you like to pay?</p>
+    <div class="paypick" id="paypick" role="radiogroup" aria-labelledby="picklabel">
+      <button type="button" role="radio" aria-checked="false" data-pay="wise"><b>Wise</b><small>If you have a bank account, from anywhere in the world</small></button>
+      <button type="button" role="radio" aria-checked="false" data-pay="amazon"><b>Amazon gift card</b><small>If you don't have a bank account</small></button>
+    </div>
+
+    <ol class="paysteps" id="steps-wise" hidden>
+      <li><b>Start your order.</b> The next screen shows a 10-character code (letters and numbers, with a dash in the middle) and the Wise name to send to. Copy both.</li>
+      <li><b>Send $7 on Wise to that name.</b> Wise asks for a reference, a note or a message before you send. Paste the 10-character code there. That code is the only thing that tells us the money is yours.</li>
+      <li><b>Save your link.</b> The next screen also gives you a private link. It's the only way back to your order, and it's where you start your session.</li>
+    </ol>
+    <ol class="paysteps" id="steps-amazon" hidden>
+      <li><b>Buy a $7 Amazon gift card.</b> Find its claim code. It's on the card, or in the email if you bought it online.</li>
+      <li><b>Type what the card is worth and paste its claim code below, then start your order.</b> Those two fields are all there is to fill in. No reference goes anywhere. The card code is what tells us the money is yours.</li>
+      <li><b>Save your link.</b> The next screen gives you a private link. It's the only way back to your order, and it's where you start your session.</li>
+    </ol>
+
+    <div class="cfield" id="amountfield" hidden>
+      <label for="amount">What the card is worth</label>
+      <span class="hint">In US dollars. A session is $7. Anything over that isn't refunded.</span>
+      <input id="amount" name="amount" type="text" inputmode="decimal" value="7">
+    </div>
+    <div class="cfield" id="codefield" hidden>
+      <label for="code">Gift card claim code</label>
+      <span class="hint">Dashes and spaces don't matter.</span>
+      <input class="code-field" id="code" name="code" type="text" autocomplete="off" autocapitalize="characters"
+             spellcheck="false" placeholder="XXXX-XXXXXX-XXXX">
+    </div>
+
+    <button type="submit" class="cbtn" id="go" disabled>Start my order</button>
+  </form>
+
+  <div id="result" hidden></div>
+
+  <section class="cpanel">
+    <p class="clabel">Lost your link?</p>
+    <p class="cfine">
+      Type your 10-character code, or the gift card claim code you used. Either one gets you a new
+      link. Nothing else can find your order, because nobody ever asked you for anything else.
+    </p>
+    <form class="cfield" id="recover" novalidate>
+      <label for="rcode">Your 10-character code, or your gift card claim code</label>
+      <input class="code-field" id="rcode" name="code" type="text" autocomplete="off" autocapitalize="characters"
+             spellcheck="false" placeholder="ABCDE-FGHJK" required>
+      <button type="submit" class="cbtn ghost" id="rgo">Find my link</button>
+    </form>
+    <div id="rresult" hidden></div>
+  </section>
+
+  <footer class="cterms">
+    <p>
+      <b>No refunds.</b> What you're paying for is set out on
+      <a href="https://farahbrunache.com">the main page</a>, and the eight questions are
+      <a href="https://chargingthefuture.github.io/chargingthefuture/article/wiki-site/how-to-run-a-one-percent-session">published
+      in full</a>, so there's nothing to find out afterward.
+    </p>
+    <p>Your card code is destroyed once it's checked. Nothing that identifies you is stored at any point.</p>
+  </footer>
+
+</main>
+
+<script type="module" src="/client-theme.js"></script>
+<script type="module">
+  import { codeFields } from '/codefield.js';
+  import { call, showProblem } from '/problem.js';
+  codeFields(['code', 'rcode']);
+
+  const from = (new URLSearchParams(location.search).get('from') || '').toUpperCase();
+  const arrived = /^[A-Z0-9]{6}$/.test(from);
+  document.getElementById('arrived').hidden = !arrived;
+
+  const method = { value: '' };
+  const picks = [...document.querySelectorAll('#paypick [data-pay]')];
+  for (const pick of picks) {
+    pick.addEventListener('click', () => {
+      method.value = pick.dataset.pay;
+      for (const other of picks) other.setAttribute('aria-checked', String(other === pick));
+      const needsCode = method.value === 'amazon';
+      document.getElementById('steps-wise').hidden = needsCode;
+      document.getElementById('steps-amazon').hidden = !needsCode;
+      document.getElementById('amountfield').hidden = !needsCode;
+      document.getElementById('codefield').hidden = !needsCode;
+      document.getElementById('code').required = needsCode;
+      document.getElementById('amount').required = needsCode;
+      document.getElementById('go').disabled = false;
+    });
+  }
+
+  function el(tag, text, className) {
+    const node = document.createElement(tag);
+    if (text) node.textContent = text;
+    if (className) node.className = className;
+    return node;
+  }
+
+  function button(label, className, onClick) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = label;
+    if (className) b.className = className;
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  function copyButton(label, getText) {
+    const b = button(label, 'cbtn ghost', async () => {
+      try {
+        await navigator.clipboard.writeText(getText());
+        b.textContent = 'Copied';
+      } catch {
+        b.textContent = 'Select it and copy';
+      }
+      setTimeout(() => { b.textContent = label; }, 2500);
+    });
+    return b;
+  }
+
+  function looksLikeUrl(value) {
+    return /^https?:\/\//i.test(String(value || '').trim());
+  }
+
+  function payToNode(value) {
+    if (!looksLikeUrl(value)) return el('div', value, 'value mono');
+    const wrap = el('div', null, 'value');
+    const a = el('a', 'Open the payment page');
+    a.href = value;
+    a.rel = 'noopener noreferrer';
+    a.target = '_blank';
+    wrap.append(a);
+    const raw = el('div', value, 'meta mono');
+    raw.style.cssText = 'margin-top:0.4rem;font-size:0.85rem;word-break:break-all;';
+    wrap.append(raw);
+    return wrap;
+  }
+
+  function box(target, kind) {
+    const node = document.getElementById(target);
+    node.hidden = false;
+    node.className = 'msg ' + (kind || '');
+    node.textContent = '';
+    return node;
+  }
+
+  function say(target, text, kind) {
+    const node = box(target, kind);
+    node.append(el('p', text));
+    return node;
+  }
+
+  function post(url, payload, doing) {
+    return call(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    }, doing);
+  }
+
+  function showOrder(target, data) {
+    const url = new URL(data.claim, location.origin).href;
+    const node = box(target, 'good');
+
+    if (data.needsCode) {
+      node.append(el('p', "Your card is in. There's nothing else to send and nothing else "
+        + "to type. Save the link below before you go anywhere — it's the only way back to "
+        + 'your order, and nothing else about you was saved that could find it.'));
+    } else {
+      node.append(el('p', `Your order is open. Now open ${data.label} and send $7 to the `
+        + `name below. ${data.label} will ask you for a reference, a note or a message `
+        + 'before you send — paste the 10-character code below in there. That code is the '
+        + 'only thing that tells us the money is yours.'));
+
+      const to = el('div', null, 'status-line');
+      to.append(el('div', `Send $7 by ${data.label}`, 'label'));
+      to.append(payToNode(data.payTo));
+      node.append(to);
+    }
+
+    const ref = el('div', null, 'status-line');
+    ref.append(el('div', data.needsCode
+      ? 'Your 10-character code'
+      : 'Paste this 10-character code into the note', 'label'));
+    ref.append(el('div', data.reference, 'big-code'));
+    node.append(ref);
+
+    node.append(el('p', "Save this link. Bookmark it, or send it to yourself. It's the only "
+      + "record of your order, and it's where you press the button to start your session."));
+    const line = el('p');
+    line.style.marginTop = '0.4rem';
+    const a = el('a', url, 'mono');
+    a.href = data.claim;
+    a.style.wordBreak = 'break-all';
+    line.append(a);
+    node.append(line);
+
+    const row = el('p', null, 'actions');
+    row.append(copyButton('Copy link', () => url));
+    row.append(copyButton('Copy reference', () => data.reference));
+    if (!data.needsCode) row.append(copyButton(`Copy ${data.label} details`, () => data.payTo));
+    row.append(button('Open my order', 'cbtn', () => { location.href = data.claim; }));
+    node.append(row);
+    node.scrollIntoView({ block: 'start' });
+
+    try { localStorage.setItem('onepercent.claim', data.claim); } catch {}
+  }
+
+  document.getElementById('buy').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const go = document.getElementById('go');
+    go.disabled = true;
+    try {
+      const data = await post('/api/submit', {
+        method: method.value,
+        amount: document.getElementById('amount').value,
+        code: document.getElementById('code').value,
+        from: arrived ? from : null,
+      }, 'Placing your order');
+      showOrder('result', data);
+    } catch (error) {
+      showProblem(document.getElementById('result'), error, 'Placing your order');
+      go.disabled = false;
+    }
+  });
+
+  document.getElementById('recover').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const rgo = document.getElementById('rgo');
+    rgo.disabled = true;
+    try {
+      const data = await post('/api/recover', { code: document.getElementById('rcode').value }, 'Finding your link');
+      const url = new URL(data.claim, location.origin).href;
+      const node = box('rresult', 'good');
+      node.append(el('p', 'Found it. Here is your link again.'));
+      const line = el('p');
+      line.style.marginTop = '0.5rem';
+      const a = el('a', url, 'mono');
+      a.href = data.claim;
+      a.style.wordBreak = 'break-all';
+      line.append(a);
+      node.append(line);
+      const row = el('p', null, 'actions');
+      row.append(copyButton('Copy link', () => url));
+      row.append(button('Open my order', 'cbtn', () => { location.href = data.claim; }));
+      node.append(row);
+      try { localStorage.setItem('onepercent.claim', data.claim); } catch {}
+    } catch (error) {
+      showProblem(document.getElementById('rresult'), error, 'Finding your link');
+      rgo.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

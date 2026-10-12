@@ -1,0 +1,46 @@
+name: Keep the call records
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: keep-the-records
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    name: Ask for anything not kept yet
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Sweep
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          SWEEP_SECRET: ${{ secrets.SWEEP_SECRET }}
+        run: |
+          set -euo pipefail
+          [ -n "$APP_URL" ] || { echo "::error title=APP_URL is not set::Nothing to call."; exit 1; }
+          [ -n "$SWEEP_SECRET" ] || { echo "::error title=SWEEP_SECRET is not set::The job cannot prove itself."; exit 1; }
+
+          origin=$(printf '%s' "$APP_URL" | sed -E 's#^(https?://[^/]+).*#\1#')
+          answer=$(curl -sS --fail-with-body --max-time 120 \
+            -X POST "$origin/api/sweep?action=records" \
+            -H "authorization: Bearer $SWEEP_SECRET") || {
+            echo "::error title=The sweep was refused::It answered: $answer"
+            exit 1
+          }
+
+          echo "$answer" | jq .
+
+          missed=$(printf '%s' "$answer" | jq '.missed | length')
+          if [ "$missed" -gt 0 ]; then
+            echo "::warning title=${missed} call record(s) could not be kept::$(printf '%s' "$answer" | jq -c '.missed')"
+          fi
+
+          {
+            echo "## Call records"
+            echo
+            printf '%s' "$answer" | jq -r '"Looked at \(.looked), kept \(.kept), missed \(.missed | length)."'
+          } >> "$GITHUB_STEP_SUMMARY"

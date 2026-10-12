@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Funnel — One Percent</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="wrap inside">
+
+  <div class="topbar">
+    <div class="titled">
+      <h1>Funnel</h1>
+      <p class="date" id="today"></p>
+    </div>
+    <button type="button" class="iconbtn" id="again">Refresh</button>
+  </div>
+  <nav class="tabs" aria-label="Desk">
+    <a href="/desk">Today</a>
+    <a href="/desk?state=waiting">Everyone</a>
+    <a aria-current="page" href="/funnel">Funnel</a>
+    <a href="/money">Money</a>
+  </nav>
+
+  <div id="signin" hidden>
+    <div class="actions"><a class="button go-on" href="/api/auth?action=start&amp;to=/funnel">Sign in with Skills Economy</a></div>
+  </div>
+
+  <div id="msg" hidden></div>
+
+  <div id="work" hidden>
+    <section class="sec">
+      <div class="box">
+        <span class="cap">Approached to success</span>
+        <div class="headline" id="headline"><b id="rate"></b><span id="ratewhy"></span></div>
+      </div>
+    </section>
+    <ol class="fun" id="funnel"></ol>
+    <button type="button" class="iconbtn" id="addone" aria-label="Approached one more">+1</button>
+    <div id="pooltools">
+      <div class="pair">
+        <button type="button" class="btn ghost small" id="poolopen">Fix count</button>
+      </div>
+      <form class="ofixrow" id="poolform" hidden>
+        <label class="visually-hidden" for="poolsize">Approached</label>
+        <input id="poolsize" inputmode="numeric" autocomplete="off" maxlength="7">
+        <button type="submit" class="btn">Save</button>
+      </form>
+    </div>
+  </div>
+
+</main>
+
+<script type="module">
+  import { call, el, msg, post } from '/desk-ui.js';
+  import { drawnBy, once, settled } from '/desk-after.js';
+
+  document.getElementById('today').textContent = new Date().toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric',
+  });
+
+  const addOne = document.getElementById('addone');
+  const poolTools = document.getElementById('pooltools');
+
+  const MADE_IT = { paid: 'paid', called: 'had the call', go: 'got a go', done: 'reached a success' };
+
+  function bar(share) {
+    const track = el('div', null, 'track');
+    const fill = el('i');
+    fill.style.width = `${Math.max(0, Math.min(100, share * 100))}%`;
+    track.append(fill);
+    return track;
+  }
+
+  function drawFunnel(stages) {
+    const list = document.getElementById('funnel');
+    list.textContent = '';
+    const top = stages[0]?.count;
+    const last = stages.at(-1);
+    document.getElementById('rate').textContent =
+      top && last.count !== null ? `${((last.count / top) * 100).toFixed(1)}%` : '—';
+    document.getElementById('ratewhy').textContent = top ? `${last.count} of ${top}` : 'Approached not typed in';
+    document.getElementById('headline').className = top && last.count ? 'headline good' : 'headline';
+
+    const scale = top || Math.max(1, ...stages.map((stage) => stage.count || 0));
+    const lost = stages.map((stage, i) => (i === 0 || stage.rate === null ? -1 : 100 - stage.rate));
+    const worst = Math.max(...lost);
+
+    stages.forEach((stage, i) => {
+      if (i > 0) {
+        const above = stages[i - 1].count;
+        const drop = el('li', null, worst > 0 && lost[i] === worst ? 'drop warn' : 'drop');
+        drop.append(el('span', stage.rate === null
+          ? MADE_IT[stage.key] : `${stage.rate}% ${MADE_IT[stage.key]}`));
+        if (above !== null && stage.count !== null) {
+          const gone = above - stage.count;
+          drop.append(el('em', stage.key === 'done' ? `${gone} haven’t yet` : `${gone} didn’t`));
+        }
+        list.append(drop);
+      }
+      const done = stage.key === 'done';
+      const row = el('li', null, done ? 'win' : null);
+      const head = el('div', null, 'frow');
+      head.append(el('span', stage.count === null ? '—' : String(stage.count), 'fn'),
+        el('span', done ? 'Success' : stage.label, 'ft'));
+      if (stage.entered) head.append(el('span', 'Typed', 'tag t-demo'));
+      if (stage.key === 'pool') head.append(addOne);
+      row.append(head, bar((stage.count || 0) / scale));
+      if (done) row.append(el('small', `${stage.label}.`));
+      if (stage.key === 'pool') row.append(poolTools);
+      list.append(row);
+    });
+  }
+
+  async function draw() {
+    try {
+      const data = await call('/api/desk?action=funnel');
+      drawFunnel(data.stages);
+      document.getElementById('poolsize').value =
+        data.pool === null || data.pool === undefined ? '' : String(data.pool);
+      document.getElementById('work').hidden = false;
+    } catch (error) {
+      if (error.status === 401) {
+        document.getElementById('signin').hidden = false;
+        return;
+      }
+      msg('msg', error.message, 'bad');
+    }
+  }
+
+  once(addOne, 'click', async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      const out = await post('funnel-pool', { add: 1 });
+      await settled(`${out.total} approached.`, () => post('funnel-pool', { undo: out.tap.id }));
+    } catch (error) {
+      msg('msg', error.message, 'bad');
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  once(document.getElementById('poolopen'), 'click', () => {
+    const form = document.getElementById('poolform');
+    form.hidden = !form.hidden;
+    if (!form.hidden) document.getElementById('poolsize').focus();
+  });
+
+  once(document.getElementById('poolform'), 'submit', async (event) => {
+    event.preventDefault();
+    try {
+      const out = await post('funnel-pool', { pool: document.getElementById('poolsize').value });
+      document.getElementById('poolform').hidden = true;
+      await settled(out.total === null ? 'The approached count is off the chart.'
+        : `${out.total} approached.`);
+    } catch (error) {
+      msg('msg', error.message, 'bad');
+    }
+  });
+
+  document.getElementById('again').addEventListener('click', () => draw());
+
+  drawnBy(draw);
+  draw();
+</script>
+
+</body>
+</html>

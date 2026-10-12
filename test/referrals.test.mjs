@@ -8,6 +8,7 @@ const { signSession } = await import('../lib/crypto.js');
 const { Readable } = await import('node:stream');
 const deskEndpoint = (await import('../api/desk.js')).default;
 const submit = (await import('../api/submit.js')).default;
+const { PRIVACY_VERSION } = await import('../lib/privacy.js');
 const { bringFor, referralCode, referralLines } = await import('../lib/referrals.js');
 
 function fakeRes() {
@@ -69,11 +70,11 @@ check('a go gets a link to the sales page with a code that is not their referenc
 check('asking again gives the same link', (await bringFor(ana.caseId)).link === link.link);
 const code = link.link.split('from=')[1];
 
-const bought = await hit(submit, 'POST', '/api/submit', { method: 'wise', from: code }, false);
+const bought = await hit(submit, 'POST', '/api/submit', { method: 'wise', from: code, privacy: PRIVACY_VERSION }, false);
 check('an order through a link is placed', bought.status === 201, bought);
 const [kept] = await tagged`select from_code from orders where reference_code = ${bought.out.reference}`;
 check('and keeps the code', kept.from_code === code, kept);
-const stray = await hit(submit, 'POST', '/api/submit', { method: 'wise', from: 'ZZZZZZ' }, false);
+const stray = await hit(submit, 'POST', '/api/submit', { method: 'wise', from: 'ZZZZZZ', privacy: PRIVACY_VERSION }, false);
 const [dropped] = await tagged`select from_code from orders where reference_code = ${stray.out.reference}`;
 check("a code that's nobody's is dropped, and the order still goes through",
   stray.status === 201 && dropped.from_code === null);
@@ -111,7 +112,7 @@ check('the tree counts the flag and who was brought', tree.flagged === 1 && tree
 check('and shows chains only: one, from Bo down', tree.chains === 1 && tree.tree.length === 1
   && tree.tree[0].children[0]?.children.length === 1, tree.tree);
 check('a page past the last is the last', (await ask('/api/desk?action=referrals&page=99')).page === tree.last);
-check('a flag stops nobody paying', (await hit(submit, 'POST', '/api/submit', { method: 'wise', from: code }, false)).status === 201);
+check('a flag stops nobody paying', (await hit(submit, 'POST', '/api/submit', { method: 'wise', from: code, privacy: PRIVACY_VERSION }, false)).status === 201);
 
 for (let i = 0; i < 11; i += 1) {
   await tagged`

@@ -43,6 +43,7 @@ function check(label, condition, detail) {
 process.env.NODE_ENV = 'test';
 const { route } = await import('../server.js');
 const submit = (await import('../api/submit.js')).default;
+const { PRIVACY_VERSION } = await import('../lib/privacy.js');
 const status = (await import('../api/status.js')).default;
 const recover = (await import('../api/recover.js')).default;
 const admin = (await import('../api/payments.js')).default;
@@ -149,6 +150,18 @@ check('gift card: rejects a non-numeric amount', r.statusCode === 400, r.payload
 r = await run(submit, 'POST', '/api/submit', { method: 'zelle' });
 check('zelle is no longer offered', r.statusCode === 400, r.payload);
 
+r = await run(submit, 'POST', '/api/submit', { method: 'amazon', amount: 7, code: 'PRIVACY1234X' });
+check('an order without the privacy tick is refused', r.statusCode === 400 && /privacy/.test(r.payload?.error), r.payload);
+
+r = await run(submit, 'POST', '/api/submit', { method: 'amazon', amount: 7, code: 'PRIVACY1234X', privacy: '2000-01-01' });
+check('an order against an old privacy page is refused', r.statusCode === 400 && /changed/.test(r.payload?.error), r.payload);
+
+const { readFileSync } = await import('node:fs');
+check('the privacy page and the pay page carry the same version',
+  readFileSync(new URL('../privacy.html', import.meta.url), 'utf8').includes(PRIVACY_VERSION)
+  && readFileSync(new URL('../buy.html', import.meta.url), 'utf8').includes(`'${PRIVACY_VERSION}'`));
+
+r = await run(submit, 'POST', '/api/submit', { method: 'zelle' });
 check('every rejection carries a message', typeof r.payload?.error === 'string' && r.payload.error.length > 20, r.payload);
 
 const { referenceCode, normalizeReference, looksLikeReference } = await import('../lib/orders.js');

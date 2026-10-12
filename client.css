@@ -540,6 +540,13 @@ body.client .paypick button[aria-checked="true"]::before {
 }
 body.client .paypick small { color: var(--c-soft); }
 body.client .status-line .value { font-family: Newsreader, Georgia, serif; }
+body.client .cprose h2 { margin: 0; font-size: 1.15rem; }
+body.client .cprose p, body.client .cprose ul { margin: 0; color: var(--c-soft); }
+body.client .cprose ul { padding-left: 1.1rem; display: grid; gap: 0.3rem; }
+body.client .cprose b { color: var(--c-ink, inherit); }
+body.client .cagree { display: flex; gap: 0.6rem; align-items: flex-start; font-size: 0.92rem; color: var(--c-soft); }
+body.client .cagree input { margin-top: 0.2rem; width: 1.1rem; height: 1.1rem; accent-color: var(--c-forest); flex: none; }
+body.client .cagree a { color: var(--c-forest); }
 body.client .cterms {
   margin-top: 1.6rem;
   padding-top: 1rem;

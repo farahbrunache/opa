@@ -60,12 +60,12 @@ check('a person has Chapter 1 from the start',
   JSON.stringify(first.chapters));
 
 await tagged`update plans set in_force = false where case_id = ${caseId}`;
-const [plan] = await tagged`insert into plans (order_id, case_id, path) values (${order}, ${caseId}, 'smallest') returning id`;
+const [plan] = await tagged`insert into plans (order_id, case_id, goal) values (${order}, ${caseId}, 'smallest') returning id`;
 await tagged`insert into activities (case_id, plan_id, position, title_encrypted, state, source, shown_at)
              values (${caseId}, ${plan.id}, 1, ${encrypt('Ten paid repairs')}, 'todo', 'you', now())`;
 await tagged`insert into activities (case_id, plan_id, position, title_encrypted, state, source, shown_at, closed_at)
              values (${caseId}, ${plan.id}, 2, ${encrypt('Done already')}, 'done', 'you', now(), now())`;
-await tagged`insert into projects (case_id, title_encrypted) values (${caseId}, ${encrypt('Write the flyer')})`;
+await tagged`insert into work (case_id, title_encrypted) values (${caseId}, ${encrypt('Write the flyer')})`;
 const [kept] = await tagged`insert into contacts (case_id, name_encrypted) values (${caseId}, ${encrypt('Ana')}) returning id`;
 await tagged`insert into contacts (case_id, name_encrypted) values (${caseId}, ${encrypt('Bo')})`;
 const [said] = await tagged`
@@ -112,7 +112,7 @@ check('an open activity left behind is dropped as changed direction',
 check('a finished one is left as it was', steps[1].state === 'done');
 check('and the goal it hung off is retired, not deleted',
   (await tagged`select in_force from plans where id = ${plan.id}`)[0].in_force === false);
-const [work] = await tagged`select state from projects where case_id = ${caseId}`;
+const [work] = await tagged`select state from work where case_id = ${caseId}`;
 check('open work left behind is dropped', work.state === 'dropped');
 check('Chapter 1 says what it closed with',
   one.closedWith.activities.includes('Ten paid repairs') && one.closedWith.work.includes('Write the flyer'),
@@ -131,8 +131,8 @@ check('and the order keeps the first go, so the conversation stays open',
 const decided = await ask(`/api/desk?action=person&id=${order}`);
 check('the no-go is on Chapter 2', decided.chapters[1].decision === 'no-go');
 
-await tagged`insert into projects (case_id, title_encrypted) values (${caseId}, ${encrypt('Van tires')})`;
-const [fresh] = await tagged`select chapter_id from projects where case_id = ${caseId} order by id desc limit 1`;
+await tagged`insert into work (case_id, title_encrypted) values (${caseId}, ${encrypt('Van tires')})`;
+const [fresh] = await tagged`select chapter_id from work where case_id = ${caseId} order by id desc limit 1`;
 check('work added after the pivot is stamped Chapter 2', String(fresh.chapter_id) === String(two.id));
 
 check('the brief of a closed chapter stays as it was',

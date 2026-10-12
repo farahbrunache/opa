@@ -69,9 +69,9 @@ check('no decision is working out the offer', stageFor({ decision: null }) === '
 check('a go is toward a first customer', stageFor({ decision: 'go' }) === 'first');
 check('a no-go has nothing to ask', stageFor({ decision: 'no-go' }) === null);
 check('a first customer on the smallest number is keeping it steady',
-  stageFor({ decision: 'go', firstCustomerAt: new Date(), path: 'smallest' }) === 'steady');
+  stageFor({ decision: 'go', firstCustomerAt: new Date(), goal: 'smallest' }) === 'steady');
 check('a first customer reaching past the average is going further',
-  stageFor({ decision: 'go', firstCustomerAt: new Date(), path: 'reach' }) === 'further');
+  stageFor({ decision: 'go', firstCustomerAt: new Date(), goal: 'reach' }) === 'further');
 
 {
   const empty = await press('question-add', { stage: 'first', body: '   ' });
@@ -117,8 +117,8 @@ check('one for reading the call', reading.status === 201, reading);
   await tagged`update cases set first_customer_at = now()
                 where id = (select case_id from orders where id = ${go})`;
   const won = await ask(`person&id=${go}`);
-  check('a first customer with no path is keeping it steady', won.questionStage === 'steady', won.questionStage);
-  await tagged`insert into plans (order_id, case_id, path, in_force)
+  check('a first customer with no goal is keeping it steady', won.questionStage === 'steady', won.questionStage);
+  await tagged`insert into plans (order_id, case_id, goal, in_force)
                select id, case_id, 'reach', true from orders where id = ${go}`;
   const reaching = await ask(`person&id=${go}`);
   check('reaching past the average is going further', reaching.questionStage === 'further', reaching.questionStage);

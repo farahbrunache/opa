@@ -130,7 +130,7 @@ export function owed(person) {
     send: ['Nothing of theirs is on their page. A drafted activity is waiting.', 'Move an activity to To do'],
   }[person.roadmap?.due];
   if (roadmap) {
-    out.push({ what: roadmap[0], yours: true, next: roadmap[1], go: '#milestones', button: 'Roadmap' });
+    out.push({ what: roadmap[0], yours: true, next: roadmap[1], go: '#activities', button: 'Roadmap' });
   }
   if (!person.recommendedAt) {
     out.push({ what: 'Write their next steps.', yours: true,

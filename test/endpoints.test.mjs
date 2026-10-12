@@ -322,7 +322,7 @@ check('the desk rejects an unsupported method', r.statusCode === 405, r.payload)
 
 const vocab = await import('../lib/desk.js');
 check('the two paths are the ones the pitches name',
-  vocab.isPlanPath('reach') && vocab.isPlanPath('smallest') && !vocab.isPlanPath('other'));
+  vocab.isGoal('reach') && vocab.isGoal('smallest') && !vocab.isGoal('other'));
 check('an activity is to do, drafted, done or dropped',
   ['todo', 'drafted', 'done', 'dropped'].every((s) => vocab.isActivityState(s)));
 check('an invented state is refused', !vocab.isActivityState('stalled'));

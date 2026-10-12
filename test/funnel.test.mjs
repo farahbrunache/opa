@@ -130,7 +130,7 @@ const [thirdOrder] = await tagged`
   values ('h-fn4', 'c-fn4', 700, 'wise', 'FUNNEL0004', 'confirmed', ${thirdCase})
   returning id`;
 const [plan] = await tagged`
-  insert into plans (order_id, case_id, path) values (${thirdOrder.id}, ${thirdCase}, 'smallest')
+  insert into plans (order_id, case_id, goal) values (${thirdOrder.id}, ${thirdCase}, 'smallest')
   returning id`;
 await tagged`insert into activities (case_id, plan_id, position, title_encrypted, state, closed_at)
              values (${thirdCase}, ${plan.id}, 1, ${encrypt('Ask three people')}, 'done', now())`;

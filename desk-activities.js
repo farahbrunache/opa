@@ -144,9 +144,9 @@ function workRow(person, work) {
       once(half, 'click', async () => {
         half.disabled = true;
         try {
-          await post('work-move', { id: person.id, projectId: work.id, state: value, note: note.value });
+          await post('work-move', { id: person.id, workId: work.id, state: value, note: note.value });
           await settled(`Yours: ${label.toLowerCase()}.`, work.state === 'dropped' ? null
-            : wasBefore('work-move', { id: person.id, projectId: work.id, state: work.state, note: work.note || '' }));
+            : wasBefore('work-move', { id: person.id, workId: work.id, state: work.state, note: work.note || '' }));
         } catch (error) {
           half.disabled = false;
           msg('rmsg', error.message, 'bad');
@@ -163,7 +163,7 @@ function workRow(person, work) {
   row.append(el('span', when, work.late ? 'ameta bad' : 'ameta'));
   once(note, 'change', async () => {
     try {
-      await post('work-move', { id: person.id, projectId: work.id, state: work.state === 'dropped' ? 'to do' : work.state, note: note.value });
+      await post('work-move', { id: person.id, workId: work.id, state: work.state === 'dropped' ? 'to do' : work.state, note: note.value });
       await settled('Note saved.');
     } catch (error) {
       msg('rmsg', error.message, 'bad');
@@ -176,9 +176,9 @@ function workRow(person, work) {
   once(due, 'change', async () => {
     try {
       const was = work.dueAt ? String(work.dueAt).slice(0, 10) : '';
-      await post('work-due', { id: person.id, projectId: work.id, dueAt: due.value });
+      await post('work-due', { id: person.id, workId: work.id, dueAt: due.value });
       await settled(due.value ? `Due ${weekday(`${due.value}T12:00`)}.` : 'No date on it now.',
-        wasBefore('work-due', { id: person.id, projectId: work.id, dueAt: was }));
+        wasBefore('work-due', { id: person.id, workId: work.id, dueAt: was }));
     } catch (error) {
       msg('rmsg', error.message, 'bad');
     }
@@ -313,16 +313,16 @@ export function renderActivities(person) {
   shown = person;
   if (dropping.personId !== person.id) Object.assign(dropping, { personId: person.id, activityId: null, what: null });
   const list = document.getElementById('activitylist');
-  const count = document.getElementById('stepcount');
+  const count = document.getElementById('activitycount');
   list.textContent = '';
-  document.getElementById('addstep').hidden = !person.linkedCase;
+  document.getElementById('addactivity').hidden = !person.linkedCase;
   renderRoadmap(person);
   if (!person.linkedCase) {
     count.textContent = 'No account linked';
     return;
   }
   const items = person.activities || [];
-  const work = person.projects || [];
+  const work = person.work || [];
   const of = (state) => items.filter((a) => a.state === state);
   const n = (state) => of(state).length;
   count.textContent = items.length
@@ -357,18 +357,18 @@ export function renderActivities(person) {
     list.append(head, box);
   }
 
-  const box = document.getElementById('steptitle');
+  const box = document.getElementById('activitytitle');
   const fit = () => { box.style.height = 'auto'; box.style.height = `${box.scrollHeight}px`; };
   once(box, 'input', fit);
   once(box, 'keydown', (event) => {
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
-      document.getElementById('addstep').requestSubmit();
+      document.getElementById('addactivity').requestSubmit();
     }
   });
-  once(document.getElementById('addstep'), 'submit', async (event) => {
+  once(document.getElementById('addactivity'), 'submit', async (event) => {
     event.preventDefault();
-    const input = document.getElementById('steptitle');
+    const input = document.getElementById('activitytitle');
     if (!input.value.trim()) return;
     try {
       await post('activity-add', { id: shown.id, title: input.value });

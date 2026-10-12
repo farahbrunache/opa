@@ -151,6 +151,7 @@
       const [said, tone] = workers(slot);
       const item = row(`Slot ${slot.slot} · ${slot.tier}`, slot.set ? slot.name : '',
         [said, rate(slot.perSecond)].filter(Boolean).join(' · '), tone);
+      if (slot.warmth) item.append(el('p', slot.warmth.verdict.text, `warmth ${slot.warmth.verdict.tone}`));
       if (data.keySet && !data.endpoints.said) item.append(endpointPicker(slot, data.endpoints.list));
       list.append(item);
     }

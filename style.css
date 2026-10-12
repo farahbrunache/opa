@@ -980,6 +980,8 @@ input.code-field::placeholder {
 }
 .inside .pair { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .inside .pair .btn[aria-pressed="true"] { background: var(--go-bg); border-color: var(--go); color: var(--go); cursor: default; }
+.inside .warmth { margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--faint); }
+.inside .warmth.go { color: var(--go); }
 .inside .slotpick { display: flex; gap: 0.5rem; margin-top: 0.5rem; min-width: 0; }
 .inside .slotpick select { flex: 1; min-width: 0; text-overflow: ellipsis; }
 .inside .btn.off { flex-wrap: wrap; white-space: normal; text-align: left; }

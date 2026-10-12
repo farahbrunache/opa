@@ -58,6 +58,16 @@ const notes = report.steps.find((s) => s.label === 'A note');
 check('it groups by step', notes && notes.times === 2, report.steps);
 check('and counts the person once', report.people === 1, report);
 
+console.log('steps timed before activities');
+await tagged`insert into step_times (order_id, step, seconds) values (${id}, 'milestone-add', 60), (${id}, 'action-push', 30), (${id}, 'quote', 90)`;
+await db.useDatabase(tagged);
+await db.ensureSchema();
+const renamed = (await tagged`select step from step_times where order_id = ${id} order by id`).map((r) => r.step);
+check('old step names take the new ones', !renamed.some((s) => /^(milestone|action)-|^quote$/.test(s))
+  && renamed.includes('activity-add') && renamed.includes('activity-push') && renamed.includes('session-use'), renamed);
+const renamedReport = await get('/api/desk?action=time');
+check('and the report shows only words the desk uses', renamedReport.steps.every((s) => !/-/.test(s.label)), renamedReport.steps);
+
 const failures = failureCount();
 console.log(failures ? `\n${failures} failed` : '\nall passed');
 process.exit(failures ? 1 : 0);

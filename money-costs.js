@@ -37,7 +37,7 @@ function renderAnswer(data) {
   ledgerLine(ledger, 'Running the project', `−${exact(v.runningTheProject)}`);
   const fromSessions = v.sessions * data.sessionPrice;
   document.getElementById('camefrom').textContent = `Came in: ${money(fromSessions)} from `
-    + `${v.sessions} session${v.sessions === 1 ? '' : 's'}, ${money(v.tookIn - fromSessions)} from paid work.`;
+    + `${v.sessions} call${v.sessions === 1 ? '' : 's'}, ${money(v.tookIn - fromSessions)} from sessions bought.`;
 }
 
 function renderWeeks(data) {
@@ -86,7 +86,7 @@ function renderSeven(data) {
   said.className = w.left >= 0 ? 'count ok' : 'count bad';
   const rows = document.getElementById('windowrows');
   rows.textContent = '';
-  ledgerLine(rows, 'Came in', money(w.tookIn), `${w.sessions} session${w.sessions === 1 ? '' : 's'} and paid work`);
+  ledgerLine(rows, 'Came in', money(w.tookIn), `${w.sessions} call${w.sessions === 1 ? '' : 's'} and sessions bought`);
   ledgerLine(rows, 'Serving clients', exact(w.servingClients), w.billRead
     ? `${exact(w.clientCalls)} of calls`
     : `${exact(w.clientCalls)} of calls, ${exact(w.clientDrafts)} of drafting over ${w.clientSeconds}s`);

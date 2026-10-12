@@ -137,6 +137,48 @@ check('a second use finds nothing left', (await owner('POST', 'session-use', { i
 shown = (await card('acct-sess-1')).out;
 check('the client sees it used, by what it went to', shown.held[0].usedFor === 'Invented activity');
 
+console.log('a session runs from open to close');
+const { timeStep } = await import('../lib/desk-time.js');
+const clockBack = (minutes) => tagged`
+  insert into desk_clock (order_id, at) values (${me.order}, now() - (${minutes} || ' minutes')::interval)
+  on conflict (order_id) do update set at = excluded.at`;
+const onSession = async () => (await tagged`
+  select session_id from step_times where order_id = ${me.order} order by id desc limit 1`)[0].session_id;
+const firstId = record.sessions.held[0].id;
+check('it opens when it goes to an activity', record.sessions.held[0].usedAt && !record.sessions.held[0].closedAt
+  && record.sessions.cap === null, record.sessions);
+await clockBack(10);
+await timeStep(me.order, 'activity-cadence');
+check('a step while it is open lands on it', Number(await onSession()) === firstId);
+await clockBack(5);
+const free = await ask(desk, 'admin-1', 'POST', `/api/desk?action=reply&on=${me.order}`, { id: me.order, body: 'Invented reply.', free: true });
+check('a reply sent free does not', free.status === 201 && (await onSession()) === null);
+await clockBack(5);
+await ask(desk, 'admin-1', 'POST', `/api/desk?action=reply&on=${me.order}`, { id: me.order, body: 'Invented reply.' });
+check('a reply sent in the session does', Number(await onSession()) === firstId);
+record = await person(me.order);
+check('the desk sees its minutes', record.sessions.held[0].minutes === 15, record.sessions.held[0]);
+check('the cap is a setting saved on Money', (await save({ standard: '100', access: '25', aMonth: '2', wise: 'invented-wisetag', confirmHours: '10', cap: '90' })).status === 200
+  && (await person(me.order)).sessions.cap === 90);
+await tagged`insert into held_sessions (case_id, rate) values (${me.caseId}, 'standard')`;
+await tagged`insert into step_times (order_id, step, seconds, session_id) values (${me.order}, 'note', ${85 * 60}, ${firstId})`;
+await clockBack(1);
+await timeStep(me.order, 'activity-cadence');
+record = await person(me.order);
+check('at 90 minutes it closes on the time cap', record.sessions.held[0].closedWhy === 'cap', record.sessions.held);
+check('and the next one on the card carries on with the same activity', record.sessions.held[1].usedAt
+  && !record.sessions.held[1].closedAt && record.sessions.held[1].activityId === activity.id, record.sessions.held);
+check('a second open while one is open is refused', (await owner('POST', 'session-use', { id: me.order, activityId: activity.id })).status === 409);
+await owner('POST', 'activity-done', { id: me.order, activityId: activity.id, outcome: 'Invented outcome.' });
+record = await person(me.order);
+check('marking the activity done closes it as delivered', record.sessions.held[1].closedWhy === 'delivered', record.sessions.held);
+check('with nothing open there is nothing to close', (await owner('POST', 'session-close', { id: me.order, why: 'closed' })).status === 409);
+shown = (await card('acct-sess-1')).out;
+check('the client sees when each opened and closed, and nothing about why or how long', shown.held[0].closedAt
+  && shown.held[1].closedAt && shown.held.every((h) => !('closedWhy' in h) && !('minutes' in h)), shown.held);
+const ends = (await tagged`select kind from case_events where order_id = ${me.order} and kind = 'session.closed'`).length;
+check('both closes are on the trail', ends === 2, ends);
+
 console.log('next month\'s list and the money line');
 const list = (await ask(payments, 'admin-1', 'GET', '/api/payments?action=list')).out;
 check('Money has the month\'s line', list.access.given === 2 && list.access.left === 0 && list.access.waiting === 1, list.access);
@@ -167,7 +209,7 @@ check('demo data clears', (await owner('POST', 'demo-clear')).status === 200);
 const [left] = await tagged`select count(*)::int as n from held_sessions where is_demo`;
 check('taking the card with it', left.n === 0);
 const [real] = await tagged`select count(*)::int as n from held_sessions where case_id = ${me.caseId}`;
-check('and leaving a real one', real.n === 1);
+check('and leaving the real ones', real.n === 2);
 
 const failures = failureCount();
 console.log(failures ? `\n${failures} failed` : '\nall passed');

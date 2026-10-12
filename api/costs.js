@@ -134,6 +134,7 @@ const PRICE_WORDS = {
   aMonth: 'Access sessions a month',
   wise: 'The Wise handle',
   confirmHours: 'Confirm within, hours',
+  cap: 'Session cap, minutes',
 };
 
 async function prices(req, res) {
@@ -141,7 +142,7 @@ async function prices(req, res) {
   await ensureSchema();
   const wrong = await savePrices(await readJson(req));
   if (wrong) {
-    throw new HttpError(400, `${PRICE_WORDS[wrong]} ${wrong === 'wise' ? 'is one word with no spaces' : `needs a number above zero${wrong === 'aMonth' ? ', a whole one' : ''}`}, or nothing.`);
+    throw new HttpError(400, `${PRICE_WORDS[wrong]} ${wrong === 'wise' ? 'is one word with no spaces' : `needs a number above zero${wrong === 'aMonth' || wrong === 'cap' ? ', a whole one' : ''}`}, or nothing.`);
   }
   send(res, 200, { ok: true });
 }

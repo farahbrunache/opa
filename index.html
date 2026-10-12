@@ -160,7 +160,6 @@
 
   <footer class="cfoot" id="foot" hidden>
     <div><small>Your reference</small><b class="mono" data-ref></b></div>
-    <div><small>Sessions</small><a href="#c-sessions" data-count></a></div>
     <button type="button" class="cbtn text" data-signout>Sign out</button>
   </footer>
 
@@ -190,7 +189,7 @@
       before.hidden = false;
       session = renderBefore(before, data);
     }
-    drawFoot(foot, session, data.approved);
+    drawFoot(foot, session);
     foot.hidden = false;
   }
 

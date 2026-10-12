@@ -732,7 +732,6 @@ body.client .cchip {
 }
 body.client .cchip.ok { background: var(--c-chip-ok); color: var(--c-forest); }
 body.client .cchip.mute { background: var(--c-chip-mute); color: var(--c-soft); }
-body.client .cfoot a { color: var(--c-forest); font-weight: 600; }
 body.client .cterms .cbtn { justify-self: start; }
 body.client .sessmini b { white-space: nowrap; }
 body.client .pagelink { margin: 0; font-size: 0.8rem; color: var(--c-ink); word-break: break-all; user-select: all; }

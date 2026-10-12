@@ -240,7 +240,7 @@ function drawApproved(data) {
   drawBring(data.bring);
   document.querySelectorAll('[data-go]').forEach((node) => { node.hidden = false; });
   openConversation();
-  loadCard();
+  loadCard(data.sessions);
 }
 
 function drawFinished(data) {

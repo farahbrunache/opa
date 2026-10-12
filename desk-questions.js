@@ -1,4 +1,4 @@
-import { askModel, el, link, modelReady, msg, paidButton, post, weekday } from '/desk-ui.js';
+import { askModel, el, modelReady, msg, paidButton, post, weekday } from '/desk-ui.js';
 import { askInMessage, whenAsked } from '/desk-thread.js';
 import { renderPages } from '/desk-lists.js';
 import { STAGES, fits } from '/questions.js';
@@ -106,6 +106,7 @@ function askButtons(person) {
   const ticked = person.questions.filter((q) => view.ticked.has(q.id));
   const button = document.getElementById('qtomsg');
   button.hidden = !person.conversationOpen;
+  document.getElementById('qtomsgnote').hidden = button.hidden;
   button.disabled = !ticked.length;
   button.textContent = `Ask these in a message (${ticked.length} of ${PICKS})`;
   button.onclick = () => askInMessage(ticked.map((q) => ({ id: q.id, body: q.body })));
@@ -143,7 +144,7 @@ function browse(person, rest) {
     view.page = 1;
     renderQuestions(person);
   });
-  bar.append(toggle, link('Question lists', '/questions', 'btn ghost small'));
+  bar.append(toggle);
   if (!view.browsing) return;
   const last = Math.max(1, Math.ceil(rest.length / A_PAGE));
   view.page = Math.min(view.page, last);

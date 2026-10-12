@@ -1,29 +1,37 @@
 import { call, showProblem } from '/problem.js';
 import { day, dollars, el } from '/client-ui.js';
 import { PREVIEW, readFrom } from '/client-source.js';
+import { sessionLine } from '/client-sessions.js';
 
 function money(amount) {
   return `$${dollars(amount)}`;
 }
 
-function holes(held) {
+function holes(items) {
   const row = el('div', null, 'choles');
-  const used = held.filter((h) => h.usedAt).length;
-  row.setAttribute('aria-label', `${used} of ${held.length} used`);
-  for (const session of held) row.append(el('span', session.usedAt ? '✓' : '', session.usedAt ? 'chole used' : 'chole'));
+  const used = items.filter((h) => h.usedAt).length;
+  row.setAttribute('aria-label', `${used} of ${items.length} used`);
+  for (const item of items) row.append(el('span', item.usedAt ? '✓' : '', item.usedAt ? 'chole used' : 'chole'));
   return row;
 }
 
-function card(data) {
+function card(name, items) {
   const box = el('div', null, 'ccard');
   const head = el('div', null, 'chead');
-  const used = data.held.filter((h) => h.usedAt);
-  head.append(el('b', 'Your card', 'ccardname'), el('small', `${used.length} of ${data.held.length} used`));
-  box.append(head, holes(data.held));
+  const used = items.filter((h) => h.usedAt);
+  head.append(el('b', name, 'ccardname'), el('small', `${used.length} of ${items.length} used`));
+  box.append(head, holes(items));
   if (used.length) {
     box.append(el('p', `Used for: ${used.map((h) => `${h.usedFor || 'a session'} (${day(h.usedAt)})`).join(', ')}.`, 'cfine'));
   }
   return box;
+}
+
+function intakeItems(sessions) {
+  return [...sessions].reverse().map((s) => ({
+    usedAt: s.hasCall ? s.calledAt || s.paidAt : null,
+    usedFor: s.callKind === 'follow-up' ? 'follow-up call' : 'first call',
+  }));
 }
 
 function rate(name, price, lines, button) {
@@ -42,7 +50,26 @@ function go(label, href, ghost) {
   return a;
 }
 
-export async function loadCard() {
+let intake = [];
+let called = [];
+
+function drawCalls() {
+  const list = document.getElementById('callsdone');
+  list.textContent = '';
+  document.getElementById('callshead').hidden = !called.length;
+  for (const session of called) {
+    const row = el('div', null, 'sessmini');
+    row.append(el('b', session.reference, 'mono'), el('small', sessionLine(session)));
+    list.append(row);
+  }
+}
+
+export async function loadCard(sessions) {
+  if (sessions) {
+    intake = intakeItems(sessions);
+    called = sessions.filter((s) => s.hasCall);
+  }
+  drawCalls();
   const panel = document.getElementById('c-sessions');
   const where = document.getElementById('sessioncard');
   const rates = document.getElementById('rates');
@@ -61,8 +88,9 @@ export async function loadCard() {
   }
   const left = data.held.filter((h) => !h.usedAt).length;
   document.getElementById('sessionsleft').textContent = data.held.length ? `${left} of ${data.held.length} left` : '';
-  if (data.held.length) where.append(card(data));
-  else where.append(el('p', 'No sessions on your card yet.', 'ctext'));
+  if (data.held.length) where.append(card('Your card', data.held));
+  if (intake.length) where.append(card('Intake calls', intake));
+  if (!data.held.length && !intake.length) where.append(el('p', 'No sessions on your card yet.', 'ctext'));
   for (const pending of data.pending) {
     where.append(el('p', `${pending.rateLabel} session · ${money(pending.amount)} · reference ${pending.reference} · paid, being confirmed.`, 'cfine'));
   }
@@ -71,7 +99,7 @@ export async function loadCard() {
   if (!data.rates) return;
 
   const access = data.access;
-  const lines = [`A limited number each month. ${access.left} left in ${access.monthName}.`,
+  const lines = [`A limited number each month. ${access.left} left in ${access.monthName}. Subject to change.`,
     `Request one. If none are left, join the ${access.nextMonthName} list or buy at the standard rate.`];
   let accessButton;
   if (data.request && data.request.toPay) {

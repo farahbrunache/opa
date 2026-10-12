@@ -22,7 +22,7 @@ const ANSWER = [
   'First customer: A neighbour',
   '1. What do you charge for a call-out? Why: the rate is missing',
   '2. Who has paid you before? Why: no first customer yet',
-  'ADD MILESTONE: Ask a neighbour | no first customer yet',
+  'ADD: Ask a neighbour | no first customer yet',
 ].join('\n');
 
 let submits = 0;

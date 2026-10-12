@@ -76,16 +76,17 @@ check('no go yet', row(data, 'go').count === 0, keys(data));
 
 await tagged`update orders set decision = 'go' where id = ${id}`;
 await tagged`
-  insert into quotes (account_id, amount_cents, scope_encrypted, status, answered_at)
-  values ('acct-funnel', 20000, ${encrypt('a price list')}, 'agreed', now())`;
+  insert into orders (claim_token_hash, card_code_hash, card_amount_cents, payment_method,
+                      reference_code, status, case_id, client_account_id, kind, rate)
+  values ('h-fn-s', 'c-fn-s', 10000, 'wise', 'FUNNELSESS', 'pending', ${caseId}, 'acct-funnel', 'session', 'standard')`;
 data = await read();
 check('a go shows', row(data, 'go').count === 1, keys(data));
-check('a quote agreed but not paid for is not the last row', row(data, 'done').count === 0,
+check('a session paid for but not yet confirmed is not the last row', row(data, 'done').count === 0,
   keys(data));
 
-await tagged`update quotes set status = 'paid', paid_at = now() where account_id = 'acct-funnel'`;
+await tagged`insert into held_sessions (case_id, rate) values (${caseId}, 'standard')`;
 data = await read();
-check('paying for a quote is the last row', row(data, 'done').count === 1, keys(data));
+check('a session on the card is the last row', row(data, 'done').count === 1, keys(data));
 
 {
   const before = row(data, 'paid').count;
@@ -112,11 +113,9 @@ await tagged`
   insert into orders (claim_token_hash, card_code_hash, card_amount_cents, payment_method,
                       reference_code, status, case_id, client_account_id)
   values ('h-fn2', 'c-fn2', 700, 'wise', 'FUNNEL0002', 'confirmed', ${otherCase}, 'acct-nocall')`;
-await tagged`
-  insert into quotes (account_id, amount_cents, scope_encrypted, status, paid_at)
-  values ('acct-nocall', 15000, ${encrypt('something else')}, 'paid', now())`;
+await tagged`insert into held_sessions (case_id, rate) values (${otherCase}, 'access')`;
 data = await read();
-check('a quote paid for without a call record counts on the call row',
+check('a session bought without a call record counts on the call row',
   row(data, 'called').count === 2, keys(data));
 check('and on the go row', row(data, 'go').count === 2, keys(data));
 check('and on the last row', row(data, 'done').count === 2, keys(data));
@@ -133,10 +132,10 @@ const [thirdOrder] = await tagged`
 const [plan] = await tagged`
   insert into plans (order_id, case_id, path) values (${thirdOrder.id}, ${thirdCase}, 'smallest')
   returning id`;
-await tagged`insert into milestones (plan_id, position, title_encrypted, status)
-             values (${plan.id}, 1, ${encrypt('Ask three people')}, 'worked')`;
+await tagged`insert into activities (case_id, plan_id, position, title_encrypted, state, closed_at)
+             values (${thirdCase}, ${plan.id}, 1, ${encrypt('Ask three people')}, 'done', now())`;
 data = await read();
-check('a milestone marked worked is not the last row by itself', row(data, 'done').count === 2,
+check('an activity done is not the last row by itself', row(data, 'done').count === 2,
   keys(data));
 
 async function press(payload) {

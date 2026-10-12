@@ -1,65 +1,104 @@
-import { askModel, el, modelReady, msg, paidButton, weekday } from '/desk-ui.js';
+import { askModel, el, link, modelReady, msg, paidButton, post, weekday } from '/desk-ui.js';
 import { askInMessage, whenAsked } from '/desk-thread.js';
-import { STAGES, STAGE_ORDER } from '/questions.js';
-import { once, resumeDraft } from '/desk-after.js';
+import { renderPages } from '/desk-lists.js';
+import { STAGES, fits } from '/questions.js';
+import { once, resumeDraft, settled } from '/desk-after.js';
 
-const view = { personId: null, set: null, ticked: new Set(), suggested: null, drafted: false };
+const PICKS = 3;
+const A_PAGE = 8;
 
-function setsOf(questions) {
-  return STAGE_ORDER.filter((stage) => stage !== 'any').map((stage) => ({
-    key: stage,
-    label: STAGES[stage].label,
-    questions: questions.filter((q) => q.stage === stage || q.stage === 'any'),
-  }));
-}
+const view = { personId: null, ticked: new Set(), suggested: null, browsing: false, page: 1, passing: null };
 
 whenAsked((ids) => {
   for (const id of ids) view.ticked.delete(id);
-  view.drafted = false;
 });
 
-function strip(person) {
-  const box = document.getElementById('flow3');
-  box.textContent = '';
-  const ticked = person.questions.filter((q) => view.ticked.has(q.id)).length;
-  const picks = view.suggested?.picks.length || 0;
-  const steps = [
-    ['1 · Suggest', picks ? `${picks} picked` : 'Optional', picks ? 'done' : ticked ? null : 'on'],
-    ['2 · Tick', `${ticked} ticked`, ticked ? 'done' : picks ? 'on' : null],
-    ['3 · Draft', view.drafted ? 'In Messages' : 'Then Send', view.drafted ? 'done' : ticked ? 'on' : null],
-  ];
-  for (const [name, said, tone] of steps) {
-    const li = el('li', null, tone);
-    li.append(el('b', name), el('span', said));
-    box.append(li);
-  }
+function open(person) {
+  return person.questions.filter((q) => q.fit !== 'other' && fits(q, person.questionStage) && !q.askedAt && !q.passedAt);
 }
 
-function row(question, why, person) {
-  const li = el('li');
-  const button = el('button', null, why ? 'q sug' : 'q');
+function picks(person) {
+  const why = new Map((view.suggested?.picks || []).map((p) => [p.id, p.reason]));
+  const suggested = person.questions.filter((q) => why.has(q.id) && !q.askedAt && !q.passedAt);
+  const chosen = suggested.length ? suggested : open(person);
+  return chosen.slice(0, PICKS).map((q) => ({ ...q, why: why.get(q.id) || null }));
+}
+
+function tickButton(person, question) {
+  const button = el('button', null, 'btn small');
   button.type = 'button';
-  button.setAttribute('aria-pressed', String(view.ticked.has(question.id)));
-  button.append(el('span', '✓', 'box2'));
-  const text = el('span');
-  if (why) text.append(el('span', 'Suggested', 'tag t-new'), ' ');
-  text.append(el('span', question.body, 'qt'));
-  for (const said of [question.scope, question.topic]) if (said) text.append(' ', el('span', said, 'tag'));
-  if (question.isDemo) text.append(' ', el('span', 'Demo', 'tag t-demo'));
-  if (question.askedAt) {
-    text.append(el('span', `Asked ${weekday(question.askedAt)}${question.asks > 1 ? ` · ${question.asks} times` : ''}`, 'hint asked'));
-  }
-  if (why) text.append(el('span', why, 'why'));
-  button.append(text);
+  const draw = () => {
+    const on = view.ticked.has(question.id);
+    button.setAttribute('aria-pressed', String(on));
+    button.textContent = on ? 'In the message' : 'Add to message';
+  };
+  draw();
   once(button, 'click', () => {
     if (view.ticked.has(question.id)) view.ticked.delete(question.id);
-    else view.ticked.add(question.id);
-    button.setAttribute('aria-pressed', String(view.ticked.has(question.id)));
+    else if (view.ticked.size < PICKS) view.ticked.add(question.id);
+    else {
+      msg('rmsg', `Up to ${PICKS} a message, so they can answer them all.`, 'bad');
+      return;
+    }
+    draw();
     askButtons(person);
-    counts(person);
-    strip(person);
   });
-  li.append(button);
+  return button;
+}
+
+function passBox(person, question) {
+  const box = el('div', null, 'reasons');
+  box.setAttribute('role', 'group');
+  box.setAttribute('aria-label', 'Not now, because');
+  box.append(el('span', 'Not now, because (optional):', 'faint'));
+  const send = async (reason) => {
+    try {
+      await post('question-pass', { id: person.id, question: question.id, reason: reason || undefined });
+      view.passing = null;
+      await settled('Set aside.');
+    } catch (error) {
+      msg('rmsg', error.message, 'bad');
+    }
+  };
+  for (const { value, label } of person.passReasons || []) {
+    const button = el('button', label);
+    button.type = 'button';
+    button.setAttribute('aria-pressed', 'false');
+    once(button, 'click', () => send(value));
+    box.append(button);
+  }
+  const skip = el('button', 'No reason', 'btn ghost small');
+  skip.type = 'button';
+  once(skip, 'click', () => send(null));
+  const cancel = el('button', 'Cancel', 'btn ghost small');
+  cancel.type = 'button';
+  once(cancel, 'click', () => {
+    view.passing = null;
+    renderQuestions(person);
+  });
+  box.append(skip, cancel);
+  return box;
+}
+
+function nextRow(person, question) {
+  const li = el('li', null, 'qnext');
+  const text = el('div', null, 'stack tight');
+  text.append(el('span', question.body, 'qtext'));
+  const tags = [question.scope || 'Everyone', question.topic].filter(Boolean).join(' · ');
+  text.append(el('span', tags, 'faint'));
+  if (question.isDemo) text.append(el('span', 'Demo', 'tag t-demo'));
+  if (question.why) text.append(el('span', question.why, 'why'));
+  li.append(text);
+  const pair = el('div', null, 'pair');
+  const notNow = el('button', 'Not now', 'btn ghost small');
+  notNow.type = 'button';
+  once(notNow, 'click', () => {
+    view.passing = question.id;
+    renderQuestions(person);
+  });
+  pair.append(tickButton(person, question), notNow);
+  li.append(pair);
+  if (view.passing === question.id) li.append(passBox(person, question));
   return li;
 }
 
@@ -68,77 +107,120 @@ function askButtons(person) {
   const button = document.getElementById('qtomsg');
   button.hidden = !person.conversationOpen;
   button.disabled = !ticked.length;
-  button.textContent = `Ask these in a message (${ticked.length})`;
-  button.onclick = () => {
-    askInMessage(ticked.map((q) => ({ id: q.id, body: q.body })));
-    view.drafted = true;
-    strip(person);
-  };
+  button.textContent = `Ask these in a message (${ticked.length} of ${PICKS})`;
+  button.onclick = () => askInMessage(ticked.map((q) => ({ id: q.id, body: q.body })));
 }
 
-function counts(person) {
-  const asked = person.questions.filter((q) => q.askedAt).length;
-  document.getElementById('qasked').textContent = `${asked} of ${person.questions.length} asked`
-    + ` · ${person.questions.filter((q) => view.ticked.has(q.id)).length} ticked`;
-}
-
-function draw(person, sets) {
-  const list = document.getElementById('qlist');
-  const chips = document.getElementById('qsets');
+function askedRows(person) {
+  const asked = person.questions.filter((q) => q.askedAt)
+    .sort((a, b) => new Date(b.askedAt) - new Date(a.askedAt));
+  document.getElementById('qaskedhead').hidden = !asked.length;
+  document.getElementById('qaskedcount').textContent = String(asked.length);
+  const list = document.getElementById('qaskedlist');
   list.textContent = '';
-  chips.textContent = '';
-  for (const set of sets) {
-    const chip = el('button', set.key === person.questionStage ? `${set.label} · now` : set.label, 'chip');
-    chip.type = 'button';
-    chip.setAttribute('aria-pressed', String(set.key === view.set));
-    once(chip, 'click', () => {
-      view.set = set.key;
-      draw(person, sets);
+  for (const q of asked) {
+    const p = el('p', null, 'drow');
+    p.append(el('b', q.body), ` · asked ${weekday(q.askedAt)}${q.asks > 1 ? ` · ${q.asks} times` : ''} · `,
+      el('span', q.answered ? 'answered' : 'waiting', q.answered ? 'good' : null));
+    list.append(p);
+  }
+  return asked.length;
+}
+
+function browse(person, rest) {
+  const bar = document.getElementById('qbrowsebar');
+  const list = document.getElementById('qlist');
+  const pager = document.getElementById('qpager');
+  bar.textContent = '';
+  list.textContent = '';
+  list.hidden = !view.browsing;
+  pager.hidden = true;
+  const toggle = el('button', view.browsing ? 'Hide the rest' : `Browse all ${rest.length} · ${A_PAGE} a page`, 'btn ghost small');
+  toggle.type = 'button';
+  toggle.disabled = !rest.length;
+  once(toggle, 'click', () => {
+    view.browsing = !view.browsing;
+    view.page = 1;
+    renderQuestions(person);
+  });
+  bar.append(toggle, link('Question lists', '/questions', 'btn ghost small'));
+  if (!view.browsing) return;
+  const last = Math.max(1, Math.ceil(rest.length / A_PAGE));
+  view.page = Math.min(view.page, last);
+  for (const q of rest.slice((view.page - 1) * A_PAGE, view.page * A_PAGE)) {
+    const li = el('li');
+    const button = el('button', null, 'q');
+    button.type = 'button';
+    button.setAttribute('aria-pressed', String(view.ticked.has(q.id)));
+    button.append(el('span', '✓', 'box2'));
+    const text = el('span');
+    text.append(el('span', q.body, 'qt'));
+    for (const said of [q.scope, q.topic]) if (said) text.append(' ', el('span', said, 'tag'));
+    if (q.stage !== 'any') text.append(' ', el('span', STAGES[q.stage]?.label || q.stage, 'tag'));
+    if (q.passedAt) text.append(el('span', `Not now${q.passReason ? ` · ${q.passReason}` : ''} · ${weekday(q.passedAt)}`, 'hint asked'));
+    button.append(text);
+    once(button, 'click', () => {
+      if (view.ticked.has(q.id)) view.ticked.delete(q.id);
+      else if (view.ticked.size < PICKS) view.ticked.add(q.id);
+      else {
+        msg('rmsg', `Up to ${PICKS} a message, so they can answer them all.`, 'bad');
+        return;
+      }
+      button.setAttribute('aria-pressed', String(view.ticked.has(q.id)));
+      askButtons(person);
     });
-    chips.append(chip);
+    li.append(button);
+    list.append(li);
   }
-  const current = sets.find((s) => s.key === view.set) || sets[0];
-  const why = new Map((view.suggested?.picks || []).map((p) => [p.id, p.reason]));
-  const top = person.questions.filter((q) => why.has(q.id));
-  for (const q of top) list.append(row(q, why.get(q.id), person));
-  for (const q of current ? current.questions : []) {
-    if (!why.has(q.id)) list.append(row(q, null, person));
-  }
-  if (!current?.questions.length) list.append(el('li', 'No questions on the lists for this stage yet.', 'empty'));
-  counts(person);
-  strip(person);
-  const ai = document.getElementById('qai');
-  ai.hidden = !view.suggested;
-  if (view.suggested) document.getElementById('qaitext').textContent = view.suggested.summary;
-  askButtons(person);
+  renderPages(pager, view.page, last, (to) => {
+    view.page = to;
+    renderQuestions(person);
+  });
 }
 
 export function renderQuestions(person) {
   if (view.personId !== person.id) {
-    Object.assign(view, { personId: person.id, set: null, ticked: new Set(), suggested: null, drafted: false });
+    Object.assign(view, { personId: person.id, ticked: new Set(), suggested: null, browsing: false, page: 1, passing: null });
   }
   const pick = document.getElementById('qpick');
   pick.textContent = '';
+  const nextList = document.getElementById('qnext');
+  nextList.textContent = '';
 
   if (!person.questionStage) {
     document.getElementById('qasked').textContent = 'No-go';
-    document.getElementById('qsets').textContent = '';
-    document.getElementById('qlist').textContent = '';
-    document.getElementById('qai').hidden = true;
-    document.getElementById('flow3').textContent = '';
-    document.getElementById('qtomsg').hidden = true;
     document.getElementById('qfor').textContent = '';
+    document.getElementById('qnexthead').hidden = true;
+    document.getElementById('qai').hidden = true;
+    document.getElementById('qtomsg').hidden = true;
+    document.getElementById('qaskedhead').hidden = true;
+    document.getElementById('qaskedlist').textContent = '';
+    document.getElementById('qbrowsebar').textContent = '';
+    document.getElementById('qlist').hidden = true;
+    document.getElementById('qpager').hidden = true;
     return;
   }
-  const sets = setsOf(person.questions);
-  if (!view.set || !sets.some((s) => s.key === view.set)) view.set = person.questionStage;
   document.getElementById('qfor').textContent = person.trade
     ? `For ${person.trade.title} · ${person.trade.sector}`
     : 'No job title from their skills yet, so these are the questions for everyone';
 
+  const next = picks(person);
+  const nextIds = new Set(next.map((q) => q.id));
+  const rest = person.questions.filter((q) => !nextIds.has(q.id) && !q.askedAt);
+  document.getElementById('qnexthead').hidden = !next.length;
+  document.getElementById('qnextsaid').textContent = view.suggested
+    ? 'picked from the calls ($)' : 'their job title first, then their sector, then everyone';
+  for (const q of next) nextList.append(nextRow(person, q));
+  if (!next.length) nextList.append(el('li', 'Nothing left to ask at this stage.', 'empty'));
+  const asked = askedRows(person);
+  document.getElementById('qasked').textContent = `${next.length} next · ${rest.length} more · ${asked} asked`;
+
+  const ai = document.getElementById('qai');
+  ai.hidden = !view.suggested;
+  if (view.suggested) document.getElementById('qaitext').textContent = view.suggested.summary;
   document.getElementById('qclear').onclick = () => {
     view.suggested = null;
-    draw(person, sets);
+    renderQuestions(person);
   };
 
   const hasCall = (person.calls || []).some((call) => call.transcript);
@@ -155,7 +237,7 @@ export function renderQuestions(person) {
       label.textContent = 'Reading the call…';
       try {
         show(await askModel(button, { id: person.id }, 'questions-draft'));
-        draw(person, sets);
+        renderQuestions(person);
       } catch (error) {
         msg('rmsg', error.message, 'bad');
       } finally {
@@ -165,5 +247,6 @@ export function renderQuestions(person) {
     });
     pick.append(button);
   }
-  draw(person, sets);
+  askButtons(person);
+  browse(person, rest);
 }

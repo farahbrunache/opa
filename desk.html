@@ -259,7 +259,7 @@
     </div>
 
     <nav class="jump" aria-label="Sections">
-      <a href="#brief" id="jumpbrief" hidden>Brief</a><a href="#messages">Messages</a><a href="#call">Calls</a><a href="#catchups">Catch-ups</a><a href="#steps">Next steps</a><a href="#milestones">Roadmap</a><a href="#questions">Questions</a><a href="#work">Work</a><a href="#quotes">Quotes</a><a href="#matches">People</a><a href="#intros">Introductions</a><a href="#skills">Skills</a><a href="#progress">Progress</a><a href="#log">Activity log</a>
+      <a href="#brief" id="jumpbrief" hidden>Brief</a><a href="#messages">Messages</a><a href="#call">Calls</a><a href="#catchups">Catch-ups</a><a href="#steps">Next steps</a><a href="#milestones">Roadmap</a><a href="#questions">Questions</a><a href="#quotes">Sessions</a><a href="#matches">People</a><a href="#intros">Introductions</a><a href="#skills">Skills</a><a href="#progress">Progress</a><a href="#log">Activity log</a>
     </nav>
 
     <section class="sec" id="brief" hidden>
@@ -342,74 +342,47 @@
     <section class="sec" id="milestones">
       <div class="sechead"><h2>Roadmap</h2><span class="count" id="stepcount"></span></div>
       <div id="roadmap"></div>
-      <div class="stack" id="milestonelist"></div>
+      <div id="activitylist"></div>
       <form class="searchrow" id="addstep" hidden novalidate>
-        <label class="visually-hidden" for="steptitle">Add a milestone</label>
-        <textarea id="steptitle" rows="1" maxlength="300" placeholder="Add a milestone"></textarea>
+        <label class="visually-hidden" for="steptitle">Add an activity</label>
+        <textarea id="steptitle" rows="1" maxlength="300" placeholder="Add an activity · it starts in Drafted"></textarea>
         <button type="submit" class="btn">Add</button>
       </form>
     </section>
 
     <section class="sec" id="questions">
       <div class="sechead"><h2>Questions to ask</h2><span class="count" id="qasked"></span></div>
-      <ol class="flow3" id="flow3"></ol>
       <div class="label" id="qfor"></div>
-      <div class="chips" id="qsets" role="group" aria-label="Question sets"></div>
-      <div class="pair" id="qpick"></div>
+      <h3 class="rmgroup todo" id="qnexthead" hidden>Ask next <span id="qnextsaid"></span></h3>
+      <ul class="qnexts" id="qnext"></ul>
       <div class="aibox" id="qai" hidden>
-        <span class="label">Suggested from the calls</span>
+        <span class="label">Picked from the calls</span>
         <p id="qaitext"></p>
-        <div class="pair"><button type="button" class="btn ghost" id="qclear">Clear suggestions</button></div>
+        <div class="pair"><button type="button" class="btn ghost" id="qclear">Clear the picks</button></div>
       </div>
-      <ul class="qlist" id="qlist"></ul>
+      <div class="pair" id="qpick"></div>
       <div class="qbar">
         <button type="button" class="btn primary" id="qtomsg" hidden>Ask these in a message</button>
-        <a class="btn ghost" href="/questions">Edit the lists</a>
+        <a class="btn ghost" href="/questions">Question lists</a>
       </div>
-    </section>
-
-    <section class="sec" id="work">
-      <div class="sechead"><h2>Work you owe them</h2><span class="count" id="workcount"></span></div>
-      <div class="stack" id="worklist"></div>
-      <form class="box" id="addwork" hidden novalidate>
-        <span class="label">Take on new work</span>
-        <div class="field">
-          <label for="worktitle">What's the work</label>
-          <input id="worktitle" type="text" autocomplete="off" maxlength="300">
-        </div>
-        <div class="grid2">
-          <div class="field">
-            <label for="workquote">Quote it's for</label>
-            <select id="workquote"></select>
-          </div>
-          <div class="field">
-            <label for="workdue">Due (optional)</label>
-            <input id="workdue" type="date">
-          </div>
-        </div>
-        <div class="pair"><button type="submit" class="btn">Take it on</button></div>
-      </form>
+      <h3 class="rmgroup" id="qaskedhead" hidden>Asked <span id="qaskedcount"></span></h3>
+      <div class="dropped" id="qaskedlist"></div>
+      <div class="pair" id="qbrowsebar"></div>
+      <ul class="qlist" id="qlist" hidden></ul>
+      <div class="pages" id="qpager" hidden></div>
     </section>
 
     <section class="sec" id="quotes">
-      <div class="sechead"><h2>Quotes</h2><span class="count" id="quotenote"></span></div>
-      <div class="stack" id="quotelist"></div>
-      <form class="box" id="writequote" hidden novalidate>
-        <span class="label">New quote</span>
-        <p class="faint" id="breakeven"></p>
-        <div class="grid2">
-          <div class="field">
-            <label for="amount">Amount</label>
-            <input id="amount" type="number" inputmode="decimal" min="1" step="0.01" autocomplete="off" placeholder="$0">
-          </div>
-          <div class="field">
-            <label for="scope">What it covers</label>
-            <textarea id="scope" rows="2" maxlength="2000"></textarea>
-          </div>
-        </div>
-        <div class="pair" id="worth"><button type="submit" class="btn">Send the quote</button></div>
-        <p class="note" id="worthsaid"></p>
-      </form>
+      <div class="sechead"><h2>Sessions</h2><span class="count" id="quotenote"></span></div>
+      <div id="sessioncard"></div>
+      <div class="pair" id="sessionuse"></div>
+      <div class="box" id="accessbox" hidden>
+        <span class="label" id="accesshead"></span>
+        <div class="line"><b id="accessgiven"></b><span class="faint" id="accessleft"></span></div>
+        <p class="faint" id="accessmine"></p>
+      </div>
+      <p class="faint" id="sessionrates"></p>
+      <p class="faint" id="sessioncalls"></p>
     </section>
 
     <section class="sec" id="matches">

@@ -1,7 +1,8 @@
 import { firstSentence, sheetSteps } from '/sheet.js';
 import { call, showProblem } from '/problem.js';
 import { day, el, linkedText } from '/client-ui.js';
-import { loadOffers } from '/client-talk.js';
+import { openConversation } from '/client-talk.js';
+import { loadCard } from '/client-card.js';
 
 export function currentSession(data) {
   return data.sessions.find((s) => s.recommendations)
@@ -13,33 +14,22 @@ function named(name, text) {
   return name ? `${name}, ${text}` : text[0].toUpperCase() + text.slice(1);
 }
 
-function stepCard(number, text, done, onTick) {
-  const card = el('div', null, onTick ? 'cstep' : 'cstep static');
-  if (done) card.classList.add('done');
+function stepCard(number, text) {
+  const card = el('div', null, 'cstep static');
   card.append(el('span', String(number), 'cn'));
   const words = el('span', null, 'ctx');
   const [first, rest] = firstSentence(text);
   words.append(linkedText(el('b'), first));
   linkedText(words, rest);
   card.append(words);
-  if (!onTick) return card;
-  const check = el('button', null, 'ccheck');
-  check.type = 'button';
-  check.setAttribute('aria-pressed', String(done));
-  check.setAttribute('aria-label', `Step ${number} done`);
-  check.addEventListener('click', (event) => { event.stopPropagation(); onTick(); });
-  card.addEventListener('click', (event) => {
-    if (event.target.closest('a')) return;
-    onTick();
-  });
-  card.append(check);
   return card;
 }
 
-function sheetPanel(panel, session, ticking) {
+function letterPanel(panel, session, withSteps) {
   const parts = sheetSteps(session.recommendations);
   const list = panel.querySelector('.csteps');
   list.textContent = '';
+  list.hidden = !withSteps;
   panel.querySelector('.cdate').textContent = `Written for you · ${day(session.recommendedAt)}`;
   const intro = panel.querySelector('[data-part="intro"]');
   intro.textContent = '';
@@ -49,109 +39,96 @@ function sheetPanel(panel, session, ticking) {
   outro.textContent = '';
   outro.hidden = !parts.outro;
   linkedText(outro, parts.outro);
-  parts.steps.forEach((text, i) => {
-    const n = i + 1;
-    const done = session.stepsDone.includes(n);
-    const li = el('li');
-    li.append(stepCard(n, text, done, ticking ? () => ticking(n, !done) : null));
-    list.append(li);
-  });
+  if (withSteps) {
+    parts.steps.forEach((text, i) => {
+      const li = el('li');
+      li.append(stepCard(i + 1, text));
+      list.append(li);
+    });
+  }
   return parts.steps.length;
 }
 
-function headline(data, session, count, doneCount) {
+function headline(data, items) {
   if (data.firstCustomerAt) return named(data.firstName, 'you have your first paying customer.');
-  if (!session.recommendations) return named(data.firstName, 'your next steps are being written.');
-  if (count && doneCount >= count) return named(data.firstName, 'your next steps are done.');
+  const session = data.chapter ? { recommendations: data.steps?.text } : currentSession(data);
+  if (!session.recommendations) return named(data.firstName, 'your plan is being written.');
+  const todo = items.filter((i) => i.group === 'todo').length;
+  if (items.length && !todo) return named(data.firstName, 'your roadmap is done.');
   return named(data.firstName, 'your plan is underway.');
 }
 
-function pathItems(data, session, count, doneCount) {
-  const items = [];
+function callRows(data) {
+  const rows = [];
   const oldestFirst = [...data.sessions].reverse();
   let first = true;
   const old = (at) => Boolean(data.chapter && at && new Date(at) < new Date(data.chapter.startedAt));
   for (const s of oldestFirst) {
     if (!s.hasTranscript) continue;
-    items.push({ kind: 'Call', title: first ? 'Your first call' : 'Your follow-up call', group: 'done', at: s.calledAt, old: old(s.calledAt) });
+    rows.push({ title: first ? 'Your first call' : 'Your follow-up call', group: 'done', at: s.calledAt, old: old(s.calledAt), fixed: true });
     first = false;
   }
-  if (!session.recommendations) {
-    items.push({ kind: 'Next steps', title: 'Your next steps', group: 'now', said: 'Being written' });
-  } else if (count && doneCount >= count) {
-    items.push({ kind: 'Next steps', title: 'Your next steps', group: 'done', said: `All ${count} ticked`, at: session.recommendedAt });
-  } else {
-    items.push({ kind: 'Next steps', title: 'Your next steps', group: 'now', said: `${doneCount} of ${count} ticked` });
-  }
-  for (const intro of data.introductions || []) {
-    const done = intro.status === 'Introduced';
-    items.push({ kind: 'Introduction', title: intro.name, group: done ? 'done' : 'now', said: intro.status, at: intro.at });
-  }
-  items.push(...(data.path || []));
-  return items;
+  return rows;
 }
 
-function rowWords(entry) {
-  if (entry.group === 'done') {
-    return [day(entry.at) || '', entry.said && entry.said !== 'Done' ? entry.said : null];
-  }
-  if (entry.due) return [`Due ${day(entry.due)}`, entry.said || null];
-  if (entry.kind === 'Introduction') return [day(entry.at) || '', entry.said];
-  return [entry.said || '', null];
+function words(entry) {
+  if (entry.group === 'done') return [entry.at ? day(entry.at) : entry.fromCall ? 'From your call' : '', null];
+  if (entry.due) return [`Due ${day(entry.due)}`, entry.yours ? 'Farah is working on her part of this' : null];
+  if (entry.fromCall) return ['From your call', entry.yours ? 'Farah is working on her part of this' : null];
+  return [entry.since ? `Since ${day(entry.since)}` : entry.said || '', entry.yours ? 'Farah is working on her part of this' : null];
 }
 
-function pathRow(entry) {
+function row(entry, tick) {
   const li = el('li', null, entry.goal ? 'goal' : null);
-  const words = el('span');
-  words.append(el('span', entry.kind, 'k'), el('br'), el('b', entry.title));
-  const [right, line] = rowWords(entry);
-  li.append(words, el('time', right));
+  const text = el('span');
+  text.append(el('b', entry.title));
+  const [right, line] = words(entry);
+  li.append(text, el('time', right));
   if (line) li.append(el('small', line));
+  if (tick && entry.id) {
+    const check = el('button', null, entry.group === 'done' ? 'ccheck on' : 'ccheck');
+    check.type = 'button';
+    check.setAttribute('aria-pressed', String(entry.group === 'done'));
+    check.setAttribute('aria-label', `${entry.title} done`);
+    check.addEventListener('click', () => tick(entry.id, entry.group !== 'done'));
+    li.append(check);
+  }
   return li;
 }
 
-function groupsOf(items) {
+function groups(items) {
   const time = (value) => (value ? new Date(value).getTime() : Infinity);
   return [
+    ['now', 'To do', items.filter((i) => i.group === 'todo').sort((a, b) => time(a.due) - time(b.due))],
     ['done', 'Done', items.filter((i) => i.group === 'done').sort((a, b) => time(a.at) - time(b.at))],
-    ['now', 'In progress', items.filter((i) => i.group === 'now')],
-    ['next', 'Scheduled', items.filter((i) => i.group === 'next').sort((a, b) => time(a.due) - time(b.due))],
   ];
 }
 
-function drawGroups(box, groups) {
+function drawGroups(box, these, tick) {
   box.textContent = '';
   let total = 0;
-  for (const [tone, label, these] of groups) {
-    if (!these.length) continue;
-    total += these.length;
+  for (const [tone, label, items] of these) {
+    if (!items.length) continue;
+    total += items.length;
     const group = el('div', null, `tlg ${tone}`);
     const head = el('h3');
-    head.append(el('span', label), el('span', String(these.length)));
+    head.append(el('span', label), el('span', String(items.length)));
     const list = el('ol');
-    for (const entry of these) list.append(pathRow(entry));
+    for (const entry of items) list.append(row(entry, entry.fixed ? null : tick));
     group.append(head, list);
     box.append(group);
   }
   return total;
 }
 
-function drawEarlier(data, items) {
+function drawEarlier(data, calls) {
   const button = document.getElementById('earlierbtn');
   const box = document.getElementById('earlierpath');
-  const earlier = [...items.filter((i) => i.old), ...(data.earlier || [])];
-  if (data.chapter) {
-    const before = currentSession(data);
-    if (before?.recommendations) {
-      const count = sheetSteps(before.recommendations).steps.length;
-      const ticked = before.stepsDone.filter((n) => n <= count).length;
-      earlier.push({ kind: 'Next steps', title: 'Your earlier next steps', group: 'done', said: `${ticked} of ${count} ticked`, at: before.recommendedAt });
-    }
-  }
+  const earlier = [...calls.filter((i) => i.old), ...(data.earlier || [])];
   button.hidden = !data.chapter || !earlier.length;
   box.hidden = true;
   if (button.hidden) return;
-  const n = drawGroups(box, groupsOf(earlier));
+  const n = drawGroups(box, groups(earlier), null);
   const closed = `Your earlier direction · ${n} item${n === 1 ? '' : 's'}`;
   button.textContent = closed;
   button.onclick = () => {
@@ -160,16 +137,18 @@ function drawEarlier(data, items) {
   };
 }
 
-function drawPath(data, session, count, doneCount) {
-  const items = pathItems(data, session, count, doneCount);
-  const groups = groupsOf(items.filter((i) => !i.old));
-  const goal = { kind: 'The goal', title: 'Your first paying customer', goal: true };
-  if (data.firstCustomerAt) groups[0][2].push({ ...goal, group: 'done', at: data.firstCustomerAt });
-  else groups[2][2].push({ ...goal, group: 'next', said: 'Not yet' });
-  drawEarlier(data, items);
-
-  const total = drawGroups(document.getElementById('path'), groups);
-  document.getElementById('pathcount').textContent = `${total} item${total === 1 ? '' : 's'}`;
+function drawRoadmap(data, tick) {
+  const calls = callRows(data);
+  const items = [...(data.roadmap || []), ...calls.filter((i) => !i.old)];
+  const these = groups(items);
+  const goal = { title: 'Your first paying customer', goal: true, fixed: true };
+  if (data.firstCustomerAt) these[1][2].push({ ...goal, group: 'done', at: data.firstCustomerAt });
+  else these[0][2].push({ ...goal, group: 'todo', said: 'Not yet' });
+  drawEarlier(data, calls);
+  drawGroups(document.getElementById('path'), these, tick);
+  const todo = these[0][2].length;
+  const done = these[1][2].length;
+  document.getElementById('pathcount').textContent = `${todo} to do · ${done} done`;
 }
 
 function drawIntroductions(intros) {
@@ -178,14 +157,14 @@ function drawIntroductions(intros) {
   list.textContent = '';
   panel.hidden = !intros.length;
   for (const intro of intros) {
-    const row = el('div', null, 'intro');
-    row.append(el('span', intro.initial, 'avatar alt'));
+    const row_ = el('div', null, 'intro');
+    row_.append(el('span', intro.initial, 'avatar alt'));
     const who = el('div');
     who.append(el('b', intro.name));
     who.append(el('small', [intro.jobTitle, intro.status].filter(Boolean).join(' · ')));
     if (intro.reason) who.append(el('p', intro.reason));
-    row.append(who);
-    list.append(row);
+    row_.append(who);
+    list.append(row_);
   }
 }
 
@@ -206,53 +185,48 @@ function drawBring(bring) {
   };
 }
 
-function chapterSession(data) {
-  return {
-    chapter: data.chapter.number,
-    recommendations: data.steps?.text || null,
-    recommendedAt: data.steps?.at || null,
-    stepsDone: data.steps?.done || [],
-  };
+function letterOf(data) {
+  if (data.chapter) {
+    return data.steps ? { recommendations: data.steps.text, recommendedAt: data.steps.at } : null;
+  }
+  const session = currentSession(data);
+  return session.recommendations ? session : null;
 }
 
 function drawApproved(data) {
-  const session = data.chapter ? chapterSession(data) : currentSession(data);
   const panel = document.getElementById('c-plan');
   const progress = document.getElementById('stepprogress');
   const said = document.getElementById('stepmsg');
 
   const draw = () => {
-    let count = 0;
-    if (session.recommendations) {
-      count = sheetPanel(panel, session, tick);
-      panel.hidden = false;
-    } else {
-      panel.hidden = true;
-    }
-    const doneCount = session.stepsDone.filter((n) => n <= count).length;
-    progress.textContent = doneCount
-      ? `${doneCount} of ${count} done. Farah sees this right away.`
-      : "Tap a step when it's done. Farah sees it right away.";
-    document.getElementById('heroline').textContent = headline(data, session, count, doneCount);
-    drawPath(data, session, count, doneCount);
+    const letter = letterOf(data);
+    panel.hidden = !letter;
+    if (letter) letterPanel(panel, letter, false);
+    const steps = (data.roadmap || []).filter((i) => i.fromCall);
+    const done = steps.filter((i) => i.group === 'done').length;
+    const n = steps.length;
+    progress.textContent = n
+      ? `${n === 1 ? 'Its one step is' : `Its ${n} steps are`} on your roadmap above: ${done} done, ${n - done} to do. Tap a circle when one is done. Farah sees it right away.`
+      : 'What it says to do is on your roadmap above.';
+    document.getElementById('heroline').textContent = headline(data, data.roadmap || []);
+    drawRoadmap(data, tick);
   };
 
   let busy = false;
-  async function tick(step, done) {
+  async function tick(activity, done) {
     if (busy) return;
     busy = true;
     said.hidden = true;
     try {
-      const back = await call('/api/client?action=step', {
+      const back = await call('/api/client?action=activity', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(session.chapter ? { chapter: session.chapter, step, done }
-          : { reference: session.reference, step, done }),
-      }, done ? 'Marking that step done' : 'Unmarking that step');
-      session.stepsDone = back.stepsDone;
+        body: JSON.stringify({ activity, done }),
+      }, done ? 'Marking that done' : 'Putting that back');
+      data.roadmap = back.roadmap;
       draw();
     } catch (error) {
-      showProblem(said, error, done ? 'Marking that step done' : 'Unmarking that step');
+      showProblem(said, error, done ? 'Marking that done' : 'Putting that back');
     } finally {
       busy = false;
     }
@@ -265,14 +239,15 @@ function drawApproved(data) {
   drawIntroductions(data.introductions || []);
   drawBring(data.bring);
   document.querySelectorAll('[data-go]').forEach((node) => { node.hidden = false; });
-  loadOffers(true, () => {});
+  openConversation();
+  loadCard();
 }
 
 function drawFinished(data) {
   const session = currentSession(data);
   const panel = document.getElementById('c-plan');
   panel.querySelector('.clabel').textContent = 'Your recommendation';
-  sheetPanel(panel, session, null);
+  letterPanel(panel, session, true);
   panel.hidden = false;
   document.getElementById('stepprogress').hidden = true;
   document.getElementById('eyebrow').textContent = 'One Percent · Your session';
@@ -281,9 +256,7 @@ function drawFinished(data) {
     : 'Your session is complete.';
   document.getElementById('herolede').textContent =
     'Here is the recommendation written for you from your call.';
-  loadOffers(false, (quoted) => {
-    document.querySelectorAll('[data-again]').forEach((node) => { node.hidden = quoted; });
-  });
+  document.querySelectorAll('[data-again]').forEach((node) => { node.hidden = false; });
 }
 
 export function renderPage(data) {

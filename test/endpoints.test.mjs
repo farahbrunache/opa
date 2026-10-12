@@ -275,8 +275,8 @@ r = await run(client, 'PUT', '/api/client?action=mine');
 check('a wrong method says which it was', r.statusCode === 405 && /PUT/.test(r.payload?.error || '') && r.payload.ref, r.payload);
 r = await run(client, 'POST', '/api/client?action=link', { t: 'x' });
 check('refuses to link without a session', r.statusCode === 401, r.payload);
-r = await run(client, 'GET', '/api/client?action=quotes');
-check('what has been quoted refuses without a session', r.statusCode === 401, r.payload);
+r = await run(client, 'GET', '/api/client?action=sessions');
+check('the card refuses without a session', r.statusCode === 401, r.payload);
 r = await run(client, 'GET', '/api/client?action=thread');
 check('the conversation refuses without a session', r.statusCode === 401, r.payload);
 r = await run(client, 'POST', '/api/client?action=send', { body: 'x' });
@@ -294,18 +294,18 @@ r = await run(desk, 'GET', '/api/desk?action=person&id=1');
 check('a person refuses without a session', r.statusCode === 401, r.payload);
 r = await run(desk, 'POST', '/api/desk?action=decide', { id: 1, decision: 'go' });
 check('a decision refuses without a session', r.statusCode === 401, r.payload);
-r = await run(desk, 'POST', '/api/desk?action=milestone-record', { id: 1, milestoneId: 1, status: 'worked' });
+r = await run(desk, 'POST', '/api/desk?action=activity-done', { id: 1, activityId: 1, outcome: 'x' });
 check('recording an outcome refuses without a session', r.statusCode === 401, r.payload);
 r = await run(desk, 'POST', '/api/desk?action=reply', { id: 1, body: 'x' });
 check('replying refuses without a session', r.statusCode === 401, r.payload);
 r = await run(desk, 'POST', '/api/desk?action=recommend', { id: 1, body: 'x' });
 check('writing the sheet refuses without a session', r.statusCode === 401, r.payload);
-r = await run(desk, 'POST', '/api/desk?action=quote', { id: 1, amount: 250, scope: 'x' });
-check('writing a quote refuses without a session', r.statusCode === 401, r.payload);
-r = await run(desk, 'POST', '/api/desk?action=quote-move', { id: 1, quoteId: 1, status: 'agreed' });
-check('moving a quote refuses without a session', r.statusCode === 401, r.payload);
-r = await run(client, 'GET', '/api/client?action=quotes');
-check('reading your own quotes refuses without a session', r.statusCode === 401, r.payload);
+r = await run(desk, 'POST', '/api/desk?action=session-use', { id: 1, activityId: 1 });
+check('using a session refuses without a session', r.statusCode === 401, r.payload);
+r = await run(desk, 'POST', '/api/desk?action=activity-drop', { id: 1, activityId: 1, reason: 'other' });
+check('dropping an activity refuses without a session', r.statusCode === 401, r.payload);
+r = await run(client, 'POST', '/api/client?action=access-request', {});
+check('requesting an access-rate session refuses without a session', r.statusCode === 401, r.payload);
 r = await run(desk, 'POST', '/api/desk?action=introduce', { id: 1, reference: 'ABCDE-FGHJK' });
 check('making an introduction refuses without a session', r.statusCode === 401, r.payload);
 r = await run(desk, 'POST', '/api/desk?action=introduction-record', { id: 1, introductionId: 1, outcome: 'worked' });
@@ -323,9 +323,10 @@ check('the desk rejects an unsupported method', r.statusCode === 405, r.payload)
 const vocab = await import('../lib/desk.js');
 check('the two paths are the ones the pitches name',
   vocab.isPlanPath('reach') && vocab.isPlanPath('smallest') && !vocab.isPlanPath('other'));
-check('a milestone can be recorded as stalled or ghosted',
-  vocab.isMilestoneStatus('stalled') && vocab.isMilestoneStatus('ghosted'));
-check('an invented status is refused', !vocab.isMilestoneStatus('abandoned'));
+check('an activity is to do, drafted, done or dropped',
+  ['todo', 'drafted', 'done', 'dropped'].every((s) => vocab.isActivityState(s)));
+check('an invented state is refused', !vocab.isActivityState('stalled'));
+check('a drop needs one of the six reasons offered', vocab.isDropReason('tried-it') && !vocab.isDropReason('before-reasons'));
 check('the decision is go or no-go and nothing else',
   vocab.isDecision('go') && vocab.isDecision('no-go') && !vocab.isDecision('maybe'));
 const money = await import('../lib/orders.js');
@@ -348,16 +349,8 @@ check('and only the top one is typed',
   vocab.FUNNEL_STAGES.filter((s) => s.entered).map((s) => s.key).join(',') === 'pool');
 check('every stage has a label to render', vocab.FUNNEL_STAGES.every((s) => Boolean(s.label)));
 
-check('and none of them is a tier',
-  !vocab.isQuoteStatus('basic') && !vocab.isQuoteStatus('premium') && !vocab.isQuoteStatus('tier'));
-
-check('a quote is answered three ways',
-  vocab.QUOTE_ANSWERS.join(',') === 'agreed,declined,changes asked', vocab.QUOTE_ANSWERS);
-check('and each answer is a state a quote can be in',
-  vocab.QUOTE_ANSWERS.every((a) => vocab.isQuoteStatus(a)));
-check('paid and withdrawn are not theirs to choose',
-  !vocab.isQuoteAnswer('paid') && !vocab.isQuoteAnswer('withdrawn')
-    && !vocab.isQuoteAnswer('offered'));
+check('a session is at the access rate or the standard rate, and neither is a tier',
+  vocab.isRate('access') && vocab.isRate('standard') && !vocab.isRate('premium') && !vocab.isRate('basic'));
 
 check('an introduction ends in one of three ways',
   vocab.isIntroductionOutcome('waiting') && vocab.isIntroductionOutcome('worked')

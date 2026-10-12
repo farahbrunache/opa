@@ -45,7 +45,7 @@
     </header>
     <section class="cpanel">
       <p class="clabel">Haven't paid yet?</p>
-      <p class="ctext">A session is $7: a call of up to thirty minutes, then your next steps, written by a person. No account is needed to pay or to have the call.</p>
+      <p class="ctext">A session is $7: a call of up to thirty minutes, then a plan written by a person. No account is needed to pay or to have the call.</p>
       <a class="cbtn ghost" href="/buy">Book a session · $7</a>
     </section>
   </div>
@@ -83,16 +83,16 @@
     </header>
 
     <section class="cjourney" aria-label="Everything set between you and Farah" data-go hidden>
-      <div class="chead"><p class="clabel">Your path</p><span class="cdate" id="pathcount"></span></div>
+      <div class="chead"><p class="clabel">Your roadmap</p><span class="cdate" id="pathcount"></span></div>
       <div class="tl" id="path"></div>
       <button type="button" class="cbtn text" id="earlierbtn" hidden></button>
       <div class="tl" id="earlierpath" hidden></div>
     </section>
 
     <section class="cpanel" id="c-plan" hidden>
-      <div class="chead"><p class="clabel">Your next steps</p><span class="cdate"></span></div>
+      <div class="chead"><p class="clabel">From your call</p><span class="cdate"></span></div>
       <p class="ctext" data-part="intro" hidden></p>
-      <ol class="csteps"></ol>
+      <ol class="csteps" hidden></ol>
       <p class="ctext" data-part="outro" hidden></p>
       <p class="cfine" id="stepprogress" data-go hidden></p>
       <div id="stepmsg" hidden></div>
@@ -132,10 +132,13 @@
       <p class="cfine">Jot your answers down before the call. You can read them out.</p>
     </section>
 
-    <section class="cpanel" id="c-offers" hidden>
-      <div class="chead"><p class="clabel">Offers from Farah</p><span class="cdate" id="offerwaiting"></span></div>
-      <div id="offerlist" class="cstack"></div>
-      <p class="cfine">Saying no to one offer says nothing about the others. Anything longer than an answer goes in the conversation below.</p>
+    <section class="cpanel" id="c-sessions" hidden>
+      <div class="chead"><p class="clabel">Your sessions</p><span class="cdate" id="sessionsleft"></span></div>
+      <div id="sessioncard" class="cstack"></div>
+      <div id="sessionmsg" hidden></div>
+      <p class="clabel" id="anotherhead" hidden>Another session</p>
+      <div id="rates" class="cstack"></div>
+      <p class="cfine" id="sessionsfine"></p>
     </section>
 
     <section class="cpanel" id="c-talk" hidden>
@@ -153,11 +156,6 @@
 
   </div>
 
-  <section class="cpanel" id="c-sessions" hidden>
-    <div class="chead"><p class="clabel">Your sessions</p><span class="cdate"></span></div>
-    <ul class="sessrows"></ul>
-  </section>
-
   <footer class="cfoot" id="foot" hidden>
     <div><small>Your reference</small><b class="mono" data-ref></b></div>
     <div><small>Sessions</small><a href="#c-sessions" data-count></a></div>
@@ -173,12 +171,11 @@
   import { call, showProblem } from '/problem.js';
   import { renderPage, currentSession } from '/client-area.js';
   import { renderBefore } from '/client-before.js';
-  import { drawFoot, drawSessions } from '/client-sessions.js';
+  import { drawFoot } from '/client-sessions.js';
   import { PREVIEW, RECORD, freeze, readFrom } from '/client-source.js';
 
   const out = document.getElementById('out');
   const before = document.getElementById('before');
-  const sessionsPanel = document.getElementById('c-sessions');
   const foot = document.getElementById('foot');
 
   function render(data) {
@@ -191,10 +188,7 @@
       before.hidden = false;
       session = renderBefore(before, data);
     }
-    const listed = data.sessions.length > 1 || (data.sessions.length > 0 && before.hidden);
-    sessionsPanel.hidden = true;
-    if (listed) drawSessions(sessionsPanel, data.sessions, session);
-    drawFoot(foot, session, listed ? data.sessions.length : 0);
+    drawFoot(foot, session, data.approved);
     foot.hidden = false;
   }
 

@@ -67,8 +67,7 @@ console.log('questions to ask');
 
 check('no decision is working out the offer', stageFor({ decision: null }) === 'start');
 check('a go is toward a first customer', stageFor({ decision: 'go' }) === 'first');
-check('a quoted no-go is toward a first customer', stageFor({ decision: 'no-go', openQuote: true }) === 'first');
-check('a no-go with nothing quoted has nothing to ask', stageFor({ decision: 'no-go', openQuote: false }) === null);
+check('a no-go has nothing to ask', stageFor({ decision: 'no-go' }) === null);
 check('a first customer on the smallest number is keeping it steady',
   stageFor({ decision: 'go', firstCustomerAt: new Date(), path: 'smallest' }) === 'steady');
 check('a first customer reaching past the average is going further',
@@ -89,9 +88,15 @@ check('one for reading the call', reading.status === 201, reading);
   const list = await ask('questions');
   check('the list carries the stages in order',
     list.stages.map((s) => s.stage).join(',') === 'any,start,first,steady,further', list.stages);
-  check('the list is the questions, sealed on the way in and read back',
-    list.questions.some((q) => q.id === added.out.ids[0] && q.stage === 'first' && q.body === 'How long have you had it?'),
-    list.questions);
+  check('browsing opens on the questions for everyone, sealed on the way in and read back',
+    list.browse.questions.some((q) => q.id === added.out.ids[0] && q.stage === 'first' && q.body === 'How long have you had it?')
+      && list.browse.perPage === 10 && list.browse.page === 1, list.browse);
+  const everyone = list.coverage.find((c) => c.key === '');
+  check('coverage counts the group as a whole and by stage, and calls a thin one short',
+    everyone && everyone.all === list.browse.total && everyone.stages.first >= 1 && everyone.low === true, everyone);
+  const searched = await ask('questions&group=&stage=start&q=solved');
+  check('a search within one stage finds the one that matches',
+    searched.browse.total === 1 && searched.browse.questions[0].id === reading.out.ids[0], searched.browse);
 }
 
 {
@@ -155,17 +160,20 @@ check('one for reading the call', reading.status === 201, reading);
   check('a pasted list adds one question a line', pasted.status === 201 && pasted.out.ids.length === 2, pasted);
 
   const loose = await press('question-add', { stage: 'steady', body: 'Ungrouped invented?' });
-  const list = await ask('questions');
-  const quoteOnes = list.questions.filter((q) => q.stage === 'steady' && !q.isDemo);
-  check('ungrouped comes first, then the group together',
-    quoteOnes.map((q) => q.topic || '-').join(',') === '-,Invented group,Invented group'
-      && quoteOnes[0].id === loose.out.ids[0], quoteOnes);
+  const list = await ask('questions&group=&stage=steady');
+  const steadyOnes = list.browse.questions.filter((q) => !q.isDemo && /invented/i.test(q.body));
+  check('the browse page holds the stage, newest first',
+    steadyOnes.map((q) => q.topic || '-').join(',') === '-,Invented group,Invented group'
+      && steadyOnes[0].id === loose.out.ids[0], steadyOnes);
   check('the group is offered for the next add', list.topics.includes('Invented group'), list.topics);
+  check('the coverage counts everyone\'s steady questions',
+    list.coverage.find((g) => g.key === '').stages.steady >= 3 && list.total >= 3, list.coverage);
+  const found = await ask('questions&group=&q=second%20invented');
+  check('search finds one by its words', found.browse.total === 1 && found.browse.questions[0].body === 'Second invented?', found.browse);
+  check('ten a page, newest pages numbered', found.browse.perPage === 10 && found.browse.page === 1 && found.browse.last === 1);
 
-  const quoted = await newOrder({ account: 'client-q-group', decision: 'go' });
-  await tagged`insert into quotes (account_id, amount_cents, scope_encrypted, status)
-               values ('client-q-group', 10000, ${encrypt('Invented scope')}, 'offered')`;
-  const person = await ask(`person&id=${quoted}`);
+  const grouped = await newOrder({ account: 'client-q-group', decision: 'go' });
+  const person = await ask(`person&id=${grouped}`);
   check('the record carries the group on each question',
     person.questions.filter((q) => q.topic === 'Invented group').length === 2, person.questions);
 }
@@ -178,8 +186,8 @@ check('one for reading the call', reading.status === 201, reading);
   check('an edit over the limit is refused', long.status === 400, long);
   const edited = await press('question-edit', { question: id, stage: 'steady', topic: 'Edited group', body: 'Edited invented?' });
   check('a question is edited', edited.status === 200, edited);
-  const list = await ask('questions');
-  const after = list.questions.find((q) => q.id === id);
+  const list = await ask('questions&q=edited');
+  const after = list.browse.questions.find((q) => q.id === id);
   check('with its new words, stage and group',
     after && after.body === 'Edited invented?' && after.stage === 'steady' && after.topic === 'Edited group', after);
   const missing = await press('question-edit', { question: 999999, stage: 'first', body: 'Nobody?' });
@@ -318,15 +326,31 @@ check('one for reading the call', reading.status === 201, reading);
     imported.out.unknown.join('|') === 'Invented Health · Invented Surgeons|Invented Nowhere', imported.out);
   const again = await press('questions-import', { text: bank });
   check('pasting it twice adds nothing', again.out.added === 0 && again.out.skipped === 4, again);
-  const listed = await ask('questions');
-  const steady = listed.questions.find((q) => q.body === 'Invented everyone question?');
-  const anyHealth = listed.questions.find((q) => q.body === 'Invented health any-stage question?');
-  const second = listed.questions.find((q) => q.body === 'Invented second doctor question?');
+  const listed = await ask('questions&group=');
+  const steady = listed.browse.questions.find((q) => q.body === 'Invented everyone question?');
+  const anyHealth = (await ask('questions&group=s:q-s-health')).browse.questions.find((q) => q.body === 'Invented health any-stage question?');
+  const second = (await ask('questions&group=t:q-t-doc')).browse.questions.find((q) => q.body === 'Invented second doctor question?');
   check('with stage, sector and job title read from the headings',
     steady?.stage === 'steady' && !steady.sectorId && anyHealth?.stage === 'any' && anyHealth.sectorId === 'q-s-health'
       && second?.stage === 'first' && second.tradeId === 'q-t-doc' && second.sectorId === 'q-s-health', listed.questions);
   check('the list carries the sectors with their job titles',
     listed.sectors.some((s) => s.id === 'q-s-health' && s.trades.length === 2), listed.sectors);
+  const cov = listed.coverage.find((g) => g.key === 't:q-t-doc');
+  check('coverage has a row per job title with its stages, gold under twelve',
+    cov && cov.all === 2 && cov.stages.first === 2 && cov.low === true, cov);
+
+  console.log('set aside');
+  const picks = (await ask(`person&id=${doctor}`)).questions.filter((q) => q.fit !== 'other' && !q.askedAt && !q.passedAt);
+  check('the doctor question would be asked first', picks[0].id === forDoc.out.ids[0]);
+  check('a reason it does not know is refused',
+    (await press('question-pass', { id: doctor, question: forDoc.out.ids[0], reason: 'meh' })).status === 400);
+  check('not now is accepted with a reason', (await press('question-pass', { id: doctor, question: forDoc.out.ids[0], reason: 'already-know' })).status === 200);
+  check('and without one', (await press('question-pass', { id: doctor, question: forHealth.out.ids[0] })).status === 200);
+  const after = (await ask(`person&id=${doctor}`)).questions;
+  const passed = after.find((q) => q.id === forDoc.out.ids[0]);
+  check('the record carries when and why', passed.passedAt && passed.passReason === 'Already know this', passed);
+  check('so the picker skips it', !after.filter((q) => q.fit !== 'other' && !q.askedAt && !q.passedAt).some((q) => q.id === forDoc.out.ids[0]));
+  check('and the trail says so', (await tagged`select count(*)::int as n from case_events where order_id = ${doctor} and kind = 'question.passed'`)[0].n === 2);
   await tagged`delete from trades where id like 'q-t-%'`;
 }
 

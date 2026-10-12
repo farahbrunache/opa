@@ -1,4 +1,4 @@
-import { el, link, msg, post, minutes, money, demoChip, weekday, stamp, asked } from '/desk-ui.js';
+import { el, link, msg, post, minutes, demoChip, weekday, stamp, asked } from '/desk-ui.js';
 import { once } from '/desk-after.js';
 import { renderToConfirm, waitingNow } from '/desk-confirm.js';
 
@@ -73,8 +73,6 @@ const TODAY_COUNTS = [
   ['pivots', 'new direction', 'new directions'],
   ['followUps', 'follow-up call', 'follow-up calls'],
   ['unread', 'unread message', 'unread messages'],
-  ['answered', 'answered quote', 'answered quotes'],
-  ['late', 'overdue payment', 'overdue payments', 'red'],
   ['owing', 'work item past due', 'work items past due', 'red'],
   ['due', 'follow-up due', 'follow-ups due'],
 ];
@@ -84,9 +82,7 @@ const REASONS = [
   ['pivots', 'Pivot', 't-pivot', (row) => `New direction: ${row.direction}. `],
   ['followUps', 'Follow-up call', 't-call', () => 'Write next steps.'],
   ['unread', 'Message', 't-msg', () => 'Wrote to you. Waiting on your reply.'],
-  ['answered', 'Quote', 't-quote', (row) => `Answered a quote: ${row.status} · ${money(row.amount)}`],
-  ['late', 'Payment', 't-money', (row) => `${money(row.amount)} agreed, not paid.`],
-  ['owing', 'You owe', 't-owe', (row) => row.title],
+  ['owing', 'Yours to do', 't-owe', (row) => row.title],
   ['due', 'Follow up', 't-ask', (row) => row.title],
 ];
 
@@ -105,7 +101,7 @@ function gather(data) {
       who.keys.add(key);
       const extra = [];
       if (row.wasBlocked) extra.push('Was blocked');
-      if (row.milestone) extra.push(`${row.milestone} · ${row.cadenceLabel}`);
+      if (row.cadenceLabel && key === 'due') extra.push(row.cadenceLabel);
       who.reasons.push({ label, tone, said: words(row), extra, due: dueLine(row) });
     }
   }
@@ -296,9 +292,8 @@ function rowFacts(person, group) {
   if (group === 'replies') return [code, `Wrote ${stamp(person.wroteAt)}`];
   if (group === 'active') {
     const facts = [code, decided];
-    if (person.milestones) {
-      facts.push(`Milestone ${Math.min(person.milestonesPast + 1, person.milestones)} of ${person.milestones}`);
-    }
+    if (person.activities) facts.push(`${person.activitiesDone} of ${person.activities} activities done`);
+    if (person.sessionsLeft) facts.push(`${person.sessionsLeft} session${person.sessionsLeft === 1 ? '' : 's'} on the card`);
     return facts;
   }
   return [code, decided, `Closed ${weekday(person.closedAt)}`];
@@ -312,12 +307,7 @@ function rowNext(person, group) {
   if (group === 'replies') return [`Next: reply · ${waited(hoursSince(person.wroteAt)).toLowerCase()}`, ''];
   if (group === 'active') {
     if (person.followUp && !person.recommendedAt) return ['Next: write next steps · follow-up call', ''];
-    const overdue = [];
-    if (person.lateAmount) overdue.push(`${money(person.lateAmount)} payment ${late(person.lateDueAt)}`);
-    if (person.workDueAt) overdue.push(`your work ${late(person.workDueAt)}`);
-    if (overdue.length) return [overdue.join(' · '), 'late'];
-    if (person.quoteWaiting) return ['Next: answer their quote', ''];
-    if (person.offerAmount) return [`${money(person.offerAmount)} offer waiting on them`, ''];
+    if (person.workDueAt) return [`your work ${late(person.workDueAt)}`, 'late'];
     if (person.reminderAt) return [`Next: reminder due ${weekday(person.reminderAt)}`, ''];
     if (person.introWaiting) {
       return [person.introWith ? `Introduction to ${person.introWith} waiting` : 'Introduction waiting', ''];

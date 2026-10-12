@@ -56,14 +56,14 @@ const unlinked = await order('PREVW-CCCCC', null, null, null);
 
 await owner('POST', 'recommend', { id: go, body: '1. Do the first thing.\n2. Do the second.' });
 await owner('POST', 'recommend', { id: nogo, body: '1. Something to read.' });
-await as('acct-pv-go', 'POST', 'step', { reference: 'PREVW-AAAAA', step: 1 });
+const firstStep = (await as('acct-pv-go', 'GET', 'mine')).out.roadmap.find((a) => a.fromCall);
+await as('acct-pv-go', 'POST', 'activity', { activity: firstStep.id });
 await as('acct-pv-go', 'POST', 'send', { body: 'An invented question.' });
-await tagged`insert into quotes (account_id, amount_cents, scope_encrypted, status)
-             values ('acct-pv-go', 4500, ${encrypt('Invented offer. What it covers.')}, 'offered')`;
+await tagged`insert into held_sessions (case_id, rate) select id, 'standard' from cases where account_id = 'acct-pv-go'`;
 await tagged`update cases set messages_read_at = null where account_id = 'acct-pv-go'`;
 
 console.log('the same answer the client gets');
-for (const part of ['mine', 'quotes', 'thread']) {
+for (const part of ['mine', 'sessions', 'thread']) {
   const theirs = await as('acct-pv-go', 'GET', part);
   const shown = await preview('admin-1', go, part);
   check(`${part}: the preview equals the client's own read`, shown.status === 200
@@ -75,7 +75,7 @@ for (const part of ['mine', 'quotes', 'thread']) {
   check('a page of the thread matches too', JSON.stringify(shown.out) === JSON.stringify(theirs.out));
   const mine = (await preview('admin-1', go, 'mine')).out;
   check('the approved page: approved, first name, the tick', mine.approved
-    && mine.firstName === 'Invented' && mine.sessions[0].stepsDone.join() === '1', mine);
+    && mine.firstName === 'Invented' && mine.roadmap.find((a) => a.id === firstStep.id).group === 'done', mine);
   check('nothing owner-only is in it', !/from_template|fromTemplate|note|isDemo|is_demo|decision/
     .test(JSON.stringify(mine)), mine);
 }
@@ -93,7 +93,7 @@ for (const part of ['mine', 'quotes', 'thread']) {
   check('no account linked: that one session, no name', mine.status === 200
     && mine.out.account === null && mine.out.sessions.length === 1
     && mine.out.sessions[0].reference === 'PREVW-CCCCC' && mine.out.firstName === null, mine.out);
-  check('no account linked: no offers', (await preview('admin-1', unlinked, 'quotes')).out.quotes.length === 0);
+  check('no account linked: an empty card', (await preview('admin-1', unlinked, 'sessions')).out.held.length === 0);
   check('no account linked: no conversation', (await preview('admin-1', unlinked, 'thread')).status === 403);
 }
 
@@ -101,11 +101,11 @@ console.log('reading it writes nothing');
 {
   const before = await fingerprint();
   for (const id of [go, nogo, unlinked]) {
-    for (const part of ['mine', 'quotes', 'thread']) await preview('admin-1', id, part);
+    for (const part of ['mine', 'sessions', 'thread']) await preview('admin-1', id, part);
   }
   const after = await fingerprint();
   const changed = Object.keys(before).filter((t) => before[t] !== after[t]);
-  check('no table changed: messages, cases, step ticks, events, orders, quotes or any other',
+  check('no table changed: messages, cases, activities, events, orders, sessions or any other',
     changed.length === 0 && Object.keys(before).length > 10, changed);
   const [row] = await tagged`select messages_read_at from cases where account_id = 'acct-pv-go'`;
   check('their message is still unread on the desk', row.messages_read_at === null, row);
@@ -145,11 +145,9 @@ console.log('owner-only');
 console.log('a re-enabled control would still be refused for the owner');
 {
   const before = await fingerprint();
-  check('ticking their step', (await as('admin-1', 'POST', 'step', { reference: 'PREVW-AAAAA', step: 2 })).status === 404);
+  check('ticking their step', (await as('admin-1', 'POST', 'activity', { activity: firstStep.id, done: false })).status === 404);
   check('writing into their conversation', (await as('admin-1', 'POST', 'send', { body: 'x' })).status === 403);
-  const [quote] = await tagged`select id from quotes where account_id = 'acct-pv-go'`;
-  check('answering their offer', (await as('admin-1', 'POST', 'quote-answer',
-    { id: Number(quote.id), answer: 'agreed', accepted: true })).status === 409);
+  check('requesting a session on their account', (await as('admin-1', 'POST', 'access-request', {})).status === 403);
   const after = await fingerprint();
   const changed = Object.keys(before).filter((t) => before[t] !== after[t] && t !== 'rate_limits');
   check('and none of those wrote anything but the rate count', changed.length === 0, changed);

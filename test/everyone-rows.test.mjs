@@ -35,28 +35,25 @@ check('a follow-up after a go is not a new call', !named(waiting, 'Teodor Braskw
 
 console.log('wrote to you');
 const replies = await tab('replies');
-check('somebody who wrote carries when', Boolean(named(replies, 'Dev Oyelaranmi')?.wroteAt),
-  named(replies, 'Dev Oyelaranmi'));
+check('somebody who wrote carries when', Boolean(named(replies, 'Ines Halvorgaard')?.wroteAt),
+  named(replies, 'Ines Halvorgaard'));
 
 console.log('working');
 const active = await tab('active');
 const marisol = named(active, 'Marisol Ketterby');
-check('late money is the agreed quote past its date', marisol?.lateAmount === 12, marisol);
-check('and late work has its date', Boolean(marisol?.workDueAt), marisol);
-check('milestones are counted with the ones past', marisol?.milestones === 3 && marisol?.milestonesPast === 1, marisol);
-const dev = named(active, 'Dev Oyelaranmi');
-check('an offer waiting on them carries its amount', dev?.offerAmount === 11, dev);
-check('and nothing is late on them', dev?.lateAmount === null && dev?.workDueAt === null, dev);
+check('late work has its date', Boolean(marisol?.workDueAt), marisol);
+check('activities are counted with the ones done', marisol?.activities === 7 && marisol?.activitiesDone === 4, marisol);
+check('and the sessions left on the card', marisol?.sessionsLeft === 3, marisol);
+check('a no-go is not in working', !named(active, 'Dev Oyelaranmi'));
 const ines = named(active, 'Ines Halvorgaard');
 check('a reminder coming up carries its date', ines?.reminderAt && new Date(ines.reminderAt) > new Date(), ines);
 const teodor = active.people.find((p) => p.name === 'Teodor Braskwell' && p.decision === 'go');
 check('an introduction still waiting names the other side', teodor?.introWaiting === true
   && teodor?.introWith === 'Marisol Ketterby', teodor);
 const kade = named(active, 'Kade Ferrow');
-check('the quiet one has nothing pressing', kade && !kade.lateAmount && !kade.workDueAt && !kade.offerAmount
-  && !kade.reminderAt && !kade.introWaiting && !kade.quoteWaiting, kade);
+check('the quiet one has nothing pressing', kade && !kade.workDueAt && !kade.reminderAt && !kade.introWaiting, kade);
 check('and says when you last spoke', Boolean(kade?.lastContactAt), kade);
-check('on milestone 2 of 3', kade?.milestones === 3 && kade?.milestonesPast === 1, kade);
+check('with one of two activities done', kade?.activities === 2 && kade?.activitiesDone === 1, kade);
 
 console.log('closed');
 const closed = await tab('closed');

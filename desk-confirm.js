@@ -108,9 +108,10 @@ function renderCard(order, target, redraw) {
 
   const todo = el('ul', null, 'todo');
   const what = el('li');
+  const what_ = order.kind === 'session' ? `${order.rateLabel} session · ` : '';
   const check = order.method === 'amazon'
-    ? `${order.label} · ${money(order.amount)}. Redeem the code; it's destroyed once checked.`
-    : `${order.label} · ${money(order.amount)}. Look in Wise for ${money(order.amount)} with this reference in the note.`;
+    ? `${what_}${order.label} · ${money(order.amount)}. Redeem the code; it's destroyed once checked.`
+    : `${what_}${order.label} · ${money(order.amount)}. Look in Wise for ${money(order.amount)} with this reference in the note.`;
   what.append(el('span', 'Confirm pay', 'tag t-pay'), el('span', check));
   todo.append(what);
 
@@ -120,7 +121,7 @@ function renderCard(order, target, redraw) {
 
   const said = el('span', null, 'bad');
   const acts = el('div', null, 'pair');
-  const matched = el('button', 'Matched, open the session', 'btn go');
+  const matched = el('button', order.kind === 'session' ? 'Matched, onto their card' : 'Matched, open the session', 'btn go');
   matched.type = 'button';
   const reject = el('button', 'Reject', 'btn ghost');
   reject.type = 'button';

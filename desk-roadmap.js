@@ -3,19 +3,17 @@ import { once, resumeDraft, settled } from '/desk-after.js';
 import { sendInMessage } from '/desk-thread.js';
 
 const VERB = {
-  'add-milestone': 'New milestone',
-  'add-action': 'New action',
-  'show-milestone': 'Show on their page',
-  'send-action': 'Send next',
-  'drop-action': 'Take off',
+  add: 'New activity · Drafted',
+  move: 'Move to To do',
+  drop: 'Drop',
 };
 
-function decide(person, draft, index, change, title) {
-  return async (accept) => {
+function decide(person, draft, index, title) {
+  return async (accept, reason) => {
     try {
       const out = await post('roadmap-decide', {
         id: person.id, draft: draft.id, index, decision: accept ? 'accept' : 'skip',
-        title: title ? title.value : undefined,
+        title: title ? title.value : undefined, reason: reason || undefined,
       });
       if (out.send) sendInMessage([out.send]);
       await settled(accept ? 'Change made.' : 'Skipped.');
@@ -29,10 +27,14 @@ function changeRow(person, draft, change, index) {
   const li = el('li', null, change.state === 'open' ? 'rmchange' : 'rmchange done');
   const head = el('div', null, 'line');
   head.append(el('span', VERB[change.op] || change.op, 'tag t-new'));
-  if (change.state !== 'open') head.append(el('span', change.state === 'accepted' ? 'Accepted' : 'Skipped', 'faint'));
+  if (change.state !== 'open') {
+    const said = change.state === 'accepted' ? 'Accepted' : `Skipped${change.skipReason
+      ? ` · ${(person.skipReasons || []).find((r) => r.value === change.skipReason)?.label || change.skipReason}` : ''}`;
+    head.append(el('span', said, 'faint'));
+  }
   li.append(head);
   let title = null;
-  if (change.state === 'open' && change.op.startsWith('add-')) {
+  if (change.state === 'open' && change.op === 'add') {
     title = el('input');
     title.type = 'text';
     title.maxLength = 300;
@@ -42,19 +44,36 @@ function changeRow(person, draft, change, index) {
   } else {
     li.append(el('span', change.title, 'atext'));
   }
-  if (change.under) li.append(el('span', `Under ${change.under}`, 'faint'));
   if (change.reason) li.append(el('span', change.reason, 'why'));
   if (change.state === 'open') {
-    const act = decide(person, draft, index, change, title);
+    const act = decide(person, draft, index, title);
     const pair = el('div', null, 'pair');
-    const yes = el('button', change.op === 'send-action' ? 'Accept and write it' : 'Accept', 'btn primary small');
+    const yes = el('button', change.op === 'move' ? 'Accept and write it' : 'Accept', 'btn primary small');
     yes.type = 'button';
     once(yes, 'click', () => act(true));
     const no = el('button', 'Skip', 'btn ghost small');
     no.type = 'button';
-    once(no, 'click', () => act(false));
     pair.append(yes, no);
     li.append(pair);
+    const reasons = el('div', null, 'reasons');
+    reasons.setAttribute('role', 'group');
+    reasons.setAttribute('aria-label', 'Skipping? Say why');
+    reasons.append(el('span', 'Skipping? Say why:', 'faint'));
+    let picked = null;
+    for (const { value, label } of person.skipReasons || []) {
+      const button = el('button', label);
+      button.type = 'button';
+      button.setAttribute('aria-pressed', 'false');
+      once(button, 'click', () => {
+        picked = picked === value ? null : value;
+        for (const other of reasons.querySelectorAll('button')) {
+          other.setAttribute('aria-pressed', String(picked !== null && other === button));
+        }
+      });
+      reasons.append(button);
+    }
+    once(no, 'click', () => act(false, picked));
+    li.append(reasons);
   }
   return li;
 }

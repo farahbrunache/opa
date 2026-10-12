@@ -13,7 +13,7 @@ const QUICK = {
   ],
 };
 
-const compose = { mode: 'me', fromTemplate: false, questions: [], actions: [] };
+const compose = { mode: 'me', fromTemplate: false, questions: [] };
 
 let afterAsking = () => {};
 export function whenAsked(fn) {
@@ -33,13 +33,12 @@ export function askInMessage(questions) {
   input.focus({ preventScroll: true });
 }
 
-export function sendInMessage(actions) {
+export function sendInMessage(activities) {
   const input = document.getElementById('replybody');
-  const lines = actions.map((a) => `• ${a.title}`);
+  const lines = activities.map((a) => `• ${a.title}`);
   input.value = input.value.trim()
     ? `${input.value.trimEnd()}\n\n${lines.join('\n')}`
-    : `Your next step:\n${lines.join('\n')}`;
-  compose.actions = [...new Set([...compose.actions, ...actions.filter((a) => a.id)])];
+    : `New on your roadmap:\n${lines.join('\n')}`;
   setMode('me');
   document.getElementById('messages').scrollIntoView({ behavior: 'smooth' });
   input.focus({ preventScroll: true });
@@ -138,7 +137,7 @@ export function renderThread(person) {
     ? (ours.length ? new Date(Math.max(...ours)) : new Date(0)) : null;
   note.textContent = waitingSince ? ''
     : !person.linked ? "No account linked · they can't reply"
-    : person.approvedAt ? `Open since ${stamp(person.approvedAt).split(' · ')[0]}` : 'Open: quoted';
+    : `Open since ${stamp(person.approvedAt).split(' · ')[0]}`;
   if (waitingSince) note.append(el('span', 'Waiting on you', 'tag t-msg'));
 
   if (!person.messages.length) list.append(el('p', 'Nothing said yet.', 'empty'));
@@ -205,8 +204,6 @@ export function renderThread(person) {
     const text = input.value;
     const asked = compose.mode === 'me'
       ? compose.questions.filter((q) => text.includes(q.body)).map((q) => q.id) : [];
-    const sent = compose.mode === 'me'
-      ? compose.actions.filter((a) => text.includes(a.title)).map((a) => a.id) : [];
     try {
       const out = await post('reply', {
         id: person.id,
@@ -214,12 +211,10 @@ export function renderThread(person) {
         mode: compose.mode === 'auto' ? 'auto' : undefined,
         fromTemplate: compose.fromTemplate || undefined,
         questions: asked.length ? asked : undefined,
-        actions: sent.length ? sent : undefined,
       });
       input.value = '';
       compose.fromTemplate = false;
       compose.questions = [];
-      compose.actions = [];
       afterAsking(asked);
       if (mpage) {
         const back = new URL(window.location.href);

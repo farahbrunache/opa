@@ -76,7 +76,6 @@ function renderGap(data) {
     say(`${c.sessions} more session${c.sessions === 1 ? '' : 's'}`,
       `At ${money(c.perSessionLeft)} left over each, across the same ${data.verdict.days} days`);
   }
-  say(`One piece of paid work at ${money(c.oneQuote)}`, 'Covering all of it on its own');
   if (c.perMonth !== null) say(`${money(c.perMonth)} a month less going out`, 'Spending less');
 }
 
@@ -204,7 +203,7 @@ function renderSessions(data) {
   const figures = document.getElementById('figures');
   figures.textContent = '';
   stat(figures, `Sessions sold · ${money(data.sessionsIn)}`, String(data.sessions));
-  stat(figures, `Paid work · ${money(data.quotesIn)}`, String(data.quotes));
+  stat(figures, `Sessions bought · ${money(data.boughtIn)}`, String(data.bought));
   stat(figures, 'Came in', money(data.tookIn));
   stat(figures, 'Went out, calls and drafting', exact(data.spent));
   if (data.monthlyFixed !== null) stat(figures, 'Servers a month, typed in', money(data.monthlyFixed));

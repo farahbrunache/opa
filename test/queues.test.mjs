@@ -47,21 +47,17 @@ console.log('everybody with a call is in a tab');
 const fresh = await calledOrder(null);
 check('a call nobody has decided is in new calls', (await tabsOf(fresh)).includes('waiting'));
 
-const quoted = await calledOrder('acct-queue-quoted');
-await tagged`update orders set decision = 'no-go', decision_at = now() where id = ${quoted}`;
-await tagged`insert into quotes (account_id, amount_cents, scope_encrypted, status)
-             values ('acct-queue-quoted', 50000, 'x', 'withdrawn')`;
+const wrote = await calledOrder('acct-queue-wrote');
+await tagged`update orders set decision = 'no-go', decision_at = now() where id = ${wrote}`;
 await tagged`insert into messages (account_id, author, body_encrypted)
-             values ('acct-queue-quoted', 'client', 'x')`;
-await tagged`insert into messages (account_id, author, body_encrypted)
-             values ('acct-queue-quoted', 'operator', 'x')`;
-let tabs = await tabsOf(quoted);
-check('a quoted no-go with nothing waiting is in working', tabs.join(',') === 'active', tabs);
+             values ('acct-queue-wrote', 'client', 'x')`;
+let tabs = await tabsOf(wrote);
+check('a no-go who wrote in is still closed, since the conversation never opened', tabs.join(',') === 'closed', tabs);
 
 const plain = await calledOrder(null);
 await tagged`update orders set decision = 'no-go', decision_at = now() where id = ${plain}`;
 tabs = await tabsOf(plain);
-check('a no-go with no quote is in closed', tabs.join(',') === 'closed', tabs);
+check('a no-go is in closed', tabs.join(',') === 'closed', tabs);
 
 const go = await calledOrder(null);
 await tagged`update orders set decision = 'go', decision_at = now() where id = ${go}`;

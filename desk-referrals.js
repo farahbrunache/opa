@@ -3,7 +3,7 @@ import { once, settled } from '/desk-after.js';
 import { renderPages } from '/desk-lists.js';
 
 const STATUS_TONE = {
-  Go: 't-quote', 'No-go': 't-owe', Wrote: 't-msg', 'New call': 't-new', Closed: 't-demo', Paid: 't-demo', Flagged: 't-flag',
+  Go: 't-go', 'No-go': 't-owe', Wrote: 't-msg', 'New call': 't-new', Closed: 't-demo', Paid: 't-demo', Flagged: 't-flag',
 };
 
 const latest = { person: null };

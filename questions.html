@@ -26,7 +26,36 @@
   <div id="msg" hidden></div>
 
   <div id="work" hidden>
-    <div class="box">
+    <div class="seg three" id="views" role="group" aria-label="View">
+      <button type="button" class="plain" data-view="browse" aria-pressed="true">Browse</button>
+      <button type="button" class="plain" data-view="add" aria-pressed="false">Add</button>
+      <button type="button" class="plain" data-view="paste" aria-pressed="false">Paste a bank</button>
+    </div>
+
+    <div id="view-browse">
+      <div class="box">
+        <span class="cap" id="covhead"></span>
+        <div class="tablewrap">
+          <table class="cov">
+            <thead><tr><th scope="col">Who it's for</th><th scope="col">All</th><th scope="col">Any</th><th scope="col">Offer</th><th scope="col">First</th><th scope="col">Steady</th><th scope="col">Further</th></tr></thead>
+            <tbody id="coverage"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="box">
+        <span class="cap" id="browsehead"></span>
+        <form class="searchrow" id="searchform" role="search" novalidate>
+          <label class="visually-hidden" for="q">Search the questions</label>
+          <input type="search" id="q" placeholder="Search the questions" autocomplete="off" maxlength="80" enterkeyhint="search">
+          <button type="submit" class="btn">Find</button>
+        </form>
+        <div class="chips" id="stagechips" role="group" aria-label="Stage"></div>
+        <ul class="qe" id="rows"></ul>
+        <div class="pager" id="pager"></div>
+      </div>
+    </div>
+
+    <div class="box" id="view-add" hidden>
       <span class="cap">Add questions</span>
       <form class="fields" id="addform" novalidate>
         <div class="field">
@@ -52,38 +81,36 @@
       </form>
     </div>
 
-    <div class="box">
+    <div class="box" id="view-paste" hidden>
       <span class="cap">Paste a question bank</span>
       <form class="fields" id="importform" novalidate>
         <div class="field">
           <label for="bank">Sector headings, job title headings, stage headings, a dash before each question</label>
-          <textarea id="bank" rows="4"></textarea>
+          <textarea id="bank" rows="6"></textarea>
         </div>
         <button type="submit" class="btn primary">Add what's new</button>
       </form>
     </div>
-
-    <nav class="jump" aria-label="Sectors" id="jumps"></nav>
-    <div id="stages"></div>
   </div>
 
 </main>
 
 <script type="module">
-  import { el, link, msg, get, post } from '/desk-ui.js';
-  import { watchJumps } from '/desk-jump.js';
+  import { el, msg, get, post } from '/desk-ui.js';
   import '/desk-top.js';
 
   let fields = 0;
+  let data = null;
+  const where = { group: '', stage: '', q: '', page: 1, view: 'browse' };
 
   const scopeValue = (q) => (q.tradeId ? `t:${q.tradeId}` : q.sectorId ? `s:${q.sectorId}` : '');
 
-  function fillScopes(select, data) {
+  function fillScopes(select, listing) {
     select.textContent = '';
     const everyone = el('option', 'Everyone');
     everyone.value = '';
     select.append(everyone);
-    for (const sector of data.sectors) {
+    for (const sector of listing.sectors) {
       const group = document.createElement('optgroup');
       group.label = sector.name;
       const all = el('option', `All of ${sector.name}`);
@@ -104,7 +131,13 @@
     return {};
   }
 
-  function editor(question, data, row) {
+  async function load() {
+    const params = new URLSearchParams({ group: where.group, stage: where.stage, q: where.q, page: String(where.page) });
+    data = await get(`questions&${params.toString()}`);
+    render();
+  }
+
+  function editor(question, row) {
     const n = ++fields;
     const form = el('form', null, 'fields');
     form.noValidate = true;
@@ -128,7 +161,7 @@
     scope.value = scopeValue(question);
     who.append(whoLabel, scope);
 
-    const where = el('div', null, 'grid2');
+    const grid = el('div', null, 'grid2');
     const when = el('div', null, 'field');
     const whenLabel = el('label', 'Stage');
     whenLabel.htmlFor = `estage${n}`;
@@ -153,7 +186,7 @@
     topic.setAttribute('list', 'topics');
     topic.value = question.topic || '';
     groupField.append(groupLabel, topic);
-    where.append(when, groupField);
+    grid.append(when, groupField);
 
     const actions = el('div', null, 'pair');
     const save = el('button', 'Save', 'btn primary small');
@@ -163,7 +196,7 @@
     cancel.addEventListener('click', () => form.closest('li').replaceWith(row));
     actions.append(save, cancel);
 
-    form.append(words, who, where, actions);
+    form.append(words, who, grid, actions);
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       save.disabled = true;
@@ -171,7 +204,7 @@
         await post('question-edit', {
           question: question.id, stage: stage.value, topic: topic.value, body: body.value, ...scopeBody(scope.value),
         });
-        window.location.reload();
+        await load();
       } catch (error) {
         msg('msg', error.message, 'bad');
         save.disabled = false;
@@ -182,14 +215,18 @@
     return item;
   }
 
-  function questionRow(question, data) {
+  function questionRow(question) {
     const row = el('li');
     const words = el('span', question.body);
+    if (question.topic) words.append(' ', el('span', question.topic, 'tag'));
+    if (where.stage === '' && question.stage !== 'any') {
+      words.append(' ', el('span', data.stages.find((s) => s.stage === question.stage)?.label || question.stage, 'tag'));
+    }
     if (question.isDemo) words.append(' ', el('span', 'Demo', 'tag t-demo'));
     const acts = el('span', null, 'acts');
     const edit = el('button', 'Edit', 'btn ghost small');
     edit.type = 'button';
-    edit.addEventListener('click', () => row.replaceWith(editor(question, data, row)));
+    edit.addEventListener('click', () => row.replaceWith(editor(question, row)));
     const remove = el('button', 'Delete', 'btn danger small');
     remove.type = 'button';
     remove.addEventListener('click', async () => {
@@ -197,7 +234,7 @@
       remove.disabled = true;
       try {
         await post('question-delete', { question: question.id });
-        window.location.reload();
+        await load();
       } catch (error) {
         msg('msg', error.message, 'bad');
         remove.disabled = false;
@@ -208,40 +245,71 @@
     return row;
   }
 
-  function section(id, title, questions, data) {
-    const box = el('section', null, 'sec');
-    box.id = id;
-    const head = el('div', null, 'sechead');
-    head.append(el('h2', title),
-      el('span', `${questions.length} question${questions.length === 1 ? '' : 's'}`, 'count'));
-    box.append(head);
-    if (!questions.length) box.append(el('p', 'Nothing here yet.', 'empty'));
-    const parts = [[null, questions.filter((q) => !q.tradeId)]];
-    for (const tradeId of [...new Set(questions.filter((q) => q.tradeId).map((q) => q.tradeId))]) {
-      parts.push([questions.find((q) => q.tradeId === tradeId).scope, questions.filter((q) => q.tradeId === tradeId)]);
-    }
-    for (const [title, mine] of parts) {
-      if (!mine.length) continue;
-      if (title) box.append(el('h3', title));
+  function renderCoverage() {
+    document.getElementById('covhead').textContent = `Coverage · ${data.total} question${data.total === 1 ? '' : 's'}`;
+    const body = document.getElementById('coverage');
+    body.textContent = '';
+    for (const group of data.coverage) {
+      const tr = el('tr', null, [group.low ? 'low' : null, group.key === where.group ? 'on' : null].filter(Boolean).join(' ') || null);
+      tr.tabIndex = 0;
+      tr.setAttribute('role', 'button');
+      const name = el('td', group.label);
+      tr.append(name, el('td', String(group.all)));
       for (const stage of data.stages) {
-        const here = mine.filter((q) => q.stage === stage.stage);
-        if (!here.length) continue;
-        box.append(el('div', stage.label, 'label grouplabel'));
-        const list = el('ul', null, 'qe');
-        for (const question of here) list.append(questionRow(question, data));
-        box.append(list);
+        const n = group.stages[stage.stage];
+        tr.append(el('td', String(n), n === 0 && stage.stage !== 'any' ? 'zero' : null));
       }
+      const go = () => {
+        where.group = group.key;
+        where.stage = '';
+        where.page = 1;
+        load();
+      };
+      tr.addEventListener('click', go);
+      tr.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); go(); } });
+      body.append(tr);
     }
-    return box;
   }
 
-  function render(data) {
-    const stages = document.getElementById('stages');
-    const picker = document.getElementById('stage');
-    const jumps = document.getElementById('jumps');
-    stages.textContent = '';
-    picker.textContent = '';
-    jumps.textContent = '';
+  function renderBrowse() {
+    const browse = data.browse;
+    const groupLabel = data.coverage.find((g) => g.key === browse.group)?.label || 'Everyone';
+    const stageLabel = browse.stage ? data.stages.find((s) => s.stage === browse.stage)?.label : 'Every stage';
+    document.getElementById('browsehead').textContent = `Browsing · ${groupLabel} · ${stageLabel}`;
+    document.getElementById('q').value = browse.q;
+    const chips = document.getElementById('stagechips');
+    chips.textContent = '';
+    for (const stage of [{ stage: '', label: 'Every stage' }, ...data.stages]) {
+      const chip = el('button', stage.label, 'chip');
+      chip.type = 'button';
+      chip.setAttribute('aria-pressed', String(stage.stage === browse.stage));
+      chip.addEventListener('click', () => {
+        where.stage = stage.stage;
+        where.page = 1;
+        load();
+      });
+      chips.append(chip);
+    }
+    const rows = document.getElementById('rows');
+    rows.textContent = '';
+    if (!browse.questions.length) rows.append(el('li', 'Nothing here yet.', 'empty'));
+    for (const question of browse.questions) rows.append(questionRow(question));
+    const pager = document.getElementById('pager');
+    pager.textContent = '';
+    const first = browse.total ? (browse.page - 1) * browse.perPage + 1 : 0;
+    const upTo = Math.min(browse.page * browse.perPage, browse.total);
+    const newer = el('button', 'Newer', 'btn ghost small');
+    newer.type = 'button';
+    newer.disabled = browse.page <= 1;
+    newer.addEventListener('click', () => { where.page = browse.page - 1; load(); });
+    const older = el('button', 'Older', 'btn ghost small');
+    older.type = 'button';
+    older.disabled = browse.page >= browse.last;
+    older.addEventListener('click', () => { where.page = browse.page + 1; load(); });
+    pager.append(newer, el('span', browse.total ? `${first}–${upTo} of ${browse.total}` : '0 of 0', 'faint'), older);
+  }
+
+  function render() {
     fillScopes(document.getElementById('scope'), data);
     const topics = document.getElementById('topics');
     topics.textContent = '';
@@ -250,23 +318,34 @@
       option.value = topic;
       topics.append(option);
     }
+    const picker = document.getElementById('stage');
+    picker.textContent = '';
     for (const stage of data.stages) {
       const option = el('option', stage.label);
       option.value = stage.stage;
       picker.append(option);
     }
-    const groups = [['qs-everyone', 'Everyone', data.questions.filter((q) => !q.sectorId)]];
-    data.sectors.forEach((sector, i) => {
-      groups.push([`qs-${i}`, sector.name, data.questions.filter((q) => q.sectorId === sector.id)]);
-    });
-    const listed = new Set(data.sectors.map((sector) => sector.id));
-    const gone = data.questions.filter((q) => q.sectorId && !listed.has(q.sectorId));
-    if (gone.length) groups.push(['qs-gone', 'No longer in the taxonomy', gone]);
-    for (const [id, title, questions] of groups) {
-      jumps.append(link(`${title} ${questions.length}`, `#${id}`));
-      stages.append(section(id, title, questions, data));
-    }
+    renderCoverage();
+    renderBrowse();
   }
+
+  function showView(view) {
+    where.view = view;
+    for (const button of document.querySelectorAll('#views [data-view]')) {
+      button.setAttribute('aria-pressed', String(button.dataset.view === view));
+    }
+    for (const name of ['browse', 'add', 'paste']) document.getElementById(`view-${name}`).hidden = name !== view;
+  }
+  for (const button of document.querySelectorAll('#views [data-view]')) {
+    button.addEventListener('click', () => showView(button.dataset.view));
+  }
+
+  document.getElementById('searchform').addEventListener('submit', (event) => {
+    event.preventDefault();
+    where.q = document.getElementById('q').value.trim();
+    where.page = 1;
+    load();
+  });
 
   document.getElementById('importform').addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -275,10 +354,11 @@
     try {
       const out = await post('questions-import', { text: document.getElementById('bank').value });
       const said = [`${out.added} added`, `${out.skipped} already there`];
-      if (out.unknown.length) said.push(`not in the taxonomy copy: ${out.unknown.join('; ')}`);
+      if (out.unknown.length) said.push(`not in the taxonomy copy, skipped: ${out.unknown.join('; ')}`);
       msg('msg', said.join(' · '), out.unknown.length ? 'bad' : 'good');
       document.getElementById('bank').value = '';
-      render(await get('questions'));
+      showView('browse');
+      await load();
     } catch (error) {
       msg('msg', error.message, 'bad');
     } finally {
@@ -291,26 +371,31 @@
     const button = event.submitter;
     if (button) button.disabled = true;
     try {
-      await post('question-add', {
+      const out = await post('question-add', {
         stage: document.getElementById('stage').value,
         topic: document.getElementById('topic').value,
         body: document.getElementById('body').value,
         ...scopeBody(document.getElementById('scope').value),
       });
-      window.location.reload();
+      document.getElementById('body').value = '';
+      msg('msg', `${out.ids.length} added.`, 'good');
+      where.group = document.getElementById('scope').value;
+      where.stage = document.getElementById('stage').value;
+      where.page = 1;
+      showView('browse');
+      await load();
     } catch (error) {
       msg('msg', error.message, 'bad');
+    } finally {
       if (button) button.disabled = false;
     }
   });
 
-  document.getElementById('refresh').addEventListener('click', () => window.location.reload());
+  document.getElementById('refresh').addEventListener('click', () => load().catch((error) => msg('msg', error.message, 'bad')));
 
   try {
-    const data = await get('questions');
-    render(data);
+    await load();
     document.getElementById('work').hidden = false;
-    watchJumps();
   } catch (error) {
     if (error.status === 401) {
       document.getElementById('signin').hidden = false;

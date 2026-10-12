@@ -175,9 +175,9 @@ const PAIRS_SHOWN = 3;
 
 function pairCard(pair) {
   const card = el('li', null, 'pairc');
-  const side = (person) => {
+  const side = (one) => {
     const pp = el('div', null, 'pp');
-    pp.append(link(who(person), `/desk?id=${person.id}`), el('span', person.title));
+    pp.append(link(who(one), `/desk?id=${one.id}`), el('span', one.title));
     return pp;
   };
   card.append(side(pair.a), el('span', '+', 'plus'), side(pair.b));

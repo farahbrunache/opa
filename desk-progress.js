@@ -64,7 +64,7 @@ function renderOrders(person) {
     const state = el('span');
     if (order.decision) {
       state.append(el('span', order.decision === 'go' ? 'Go' : 'No-go',
-        `tag ${order.decision === 'go' ? 't-quote' : 't-owe'}`), ' ');
+        `tag ${order.decision === 'go' ? 't-go' : 't-owe'}`), ' ');
     }
     const said = [order.thisOne ? 'This session' : null,
       order.recommendedAt ? `Next steps sent ${weekday(order.recommendedAt)}` : 'Next steps not written'];

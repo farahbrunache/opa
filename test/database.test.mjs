@@ -271,72 +271,6 @@ check('a start that came back with nothing does not',
 check('and an order with no calls at all does not',
   (await aCallCameBack(await newOrder())) === false);
 
-console.log('answering a quote');
-
-async function answer(quoteId, account, status, reason) {
-  const rows = await tagged`
-    update quotes set status = ${status}, answered_at = now(),
-                      reason_encrypted = ${reason || null}, updated_at = now()
-     where id = ${quoteId} and account_id = ${account} and status = 'offered'
-     returning id`;
-  return rows.length > 0;
-}
-
-const withAQuote = await newOrder();
-await tagged`update orders set client_account_id = 'acct-quoted' where id = ${withAQuote}`;
-const offered = await tagged`
-  insert into quotes (account_id, amount_cents, scope_encrypted)
-  values ('acct-quoted', 50000, 'two sessions and a plan') returning id`;
-const quoteId = Number(offered[0].id);
-
-check('somebody else cannot answer it',
-  (await answer(quoteId, 'acct-somebody-else', 'agreed', null)) === false);
-
-check('the person it was written for can',
-  (await answer(quoteId, 'acct-quoted', 'changes asked', 'the date does not work')) === true);
-
-const answered = await tagged`
-  select status, answered_at, reason_encrypted from quotes where id = ${quoteId}`;
-check('and what they said is kept with when they said it',
-  answered[0].status === 'changes asked'
-    && answered[0].answered_at !== null
-    && answered[0].reason_encrypted === 'the date does not work', answered[0]);
-
-check('a quote already answered cannot be answered again',
-  (await answer(quoteId, 'acct-quoted', 'agreed', null)) === false);
-
-async function offerQuote(account, cents) {
-  const rows = await tagged`
-    insert into quotes (account_id, amount_cents, scope_encrypted)
-    select ${account}, ${cents}, 'what it covers'
-     where (select count(*) from quotes where account_id = ${account} and status = 'offered') < 3
-    returning id`;
-  return rows.length > 0;
-}
-
-const choosing = 'acct-three-at-a-time';
-check('a first, second and third all land',
-  (await offerQuote(choosing, 10000)) && (await offerQuote(choosing, 20000))
-    && (await offerQuote(choosing, 30000)));
-check('and a fourth does not', (await offerQuote(choosing, 40000)) === false);
-
-await tagged`update quotes set status = 'declined', answered_at = now()
-              where account_id = ${choosing} and status = 'offered'
-                and id = (select min(id) from quotes
-                           where account_id = ${choosing} and status = 'offered')`;
-check('answering one makes room for another', (await offerQuote(choosing, 50000)) === true);
-
-const still = await tagged`
-  select count(*)::int as n from quotes where account_id = ${choosing} and status = 'offered'`;
-check('and never more than three are waiting', still[0].n === 3, still[0]);
-
-const conversation = await tagged`
-  select exists (
-    select 1 from orders
-     where client_account_id = 'acct-quoted' and approved_as_client_at is not null
-  ) or exists (select 1 from quotes where account_id = 'acct-quoted') as open`;
-check('being quoted opens the conversation without a go', conversation[0].open === true);
-
 console.log('the desk can read what it reads');
 await tagged`
   select o.id, o.reference_code, o.decision, o.decision_at, o.status, o.case_id,
@@ -418,19 +352,6 @@ try {
 }
 check('and nobody is introduced to themselves', selfIntro !== null);
 
-console.log('quotes');
-const quoted = 'user_invented_for_the_quote_test';
-await tagged`insert into quotes (account_id, amount_cents, scope_encrypted)
-             values (${quoted}, 40000, 'x')`;
-await tagged`insert into quotes (account_id, amount_cents, scope_encrypted, status)
-             values (${quoted}, 12000, 'y', 'paid')`;
-const mine = await tagged`
-  select amount_cents, status from quotes where account_id = ${quoted} order by created_at desc`;
-check('both quotes belong to the one person', mine.length === 2, mine.length);
-check('an amount is held in cents, not dollars',
-  mine.some((q) => Number(q.amount_cents) === 40000), mine);
-check('a new quote starts as offered', mine.some((q) => q.status === 'offered'), mine);
-
 console.log('the operator\'s choices');
 const settings = await import('../lib/settings.js');
 await settings.writeChoice('draft.model.slot', 'A');
@@ -478,19 +399,17 @@ async function askDesk(state) {
   return payload;
 }
 
-const quotedNoGo = await newOrder();
+const goWhoWrote = await newOrder();
 await tagged`insert into calls (order_id, call_id, transcript_encrypted)
-             values (${quotedNoGo}, ${'c-quoted-' + quotedNoGo}, 'x')`;
-await tagged`update orders set decision = 'no-go', decision_at = now(),
-                               client_account_id = 'acct-quoted' where id = ${quotedNoGo}`;
-await tagged`insert into quotes (account_id, amount_cents, scope_encrypted)
-             values ('acct-quoted', 50000, 'x')`;
+             values (${goWhoWrote}, ${'c-go-wrote-' + goWhoWrote}, 'x')`;
+await tagged`update orders set decision = 'go', decision_at = now(), approved_as_client_at = now(),
+                               client_account_id = 'acct-go-wrote' where id = ${goWhoWrote}`;
 await tagged`insert into messages (account_id, author, body_encrypted)
-             values ('acct-quoted', 'client', 'x')`;
+             values ('acct-go-wrote', 'client', 'x')`;
 
 let replies = await askDesk('replies');
-check('a quoted no-go who writes in shows in the tab that surfaces a message',
-  replies.people.some((p) => Number(p.id) === quotedNoGo),
+check('a go who writes in shows in the tab that surfaces a message',
+  replies.people.some((p) => Number(p.id) === goWhoWrote),
   replies.people.map((p) => Number(p.id)));
 check('and the count matches the rows',
   replies.total === replies.people.length, [replies.total, replies.people.length]);
@@ -534,33 +453,22 @@ async function askPerson(id) {
   return payload;
 }
 
-const quotedNoGoRecord = await newOrder();
-await tagged`update orders set decision = 'no-go', decision_at = now(),
-                               client_account_id = 'acct-quoted-record' where id = ${quotedNoGoRecord}`;
-await tagged`insert into quotes (account_id, amount_cents, scope_encrypted)
-             values ('acct-quoted-record', 50000, ${encrypt('Set up a way to be found.')})`;
-await tagged`insert into messages (account_id, author, body_encrypted)
-             values ('acct-quoted-record', 'client', ${encrypt('Can we talk about the timing?')})`;
-
-let record = await askPerson(quotedNoGoRecord);
-check('the record screen says the conversation is open for a quoted no-go',
-  record.conversationOpen === true,
-  [record.decision, record.approvedAt, record.quotes.length]);
-check('and it says a reply is owed on the same record',
-  record.awaitingReply === true, record.awaitingReply);
-
 const approvedRecord = await newOrder();
 await tagged`update orders set decision = 'go', decision_at = now(), approved_as_client_at = now(),
                                client_account_id = 'acct-approved-record' where id = ${approvedRecord}`;
-record = await askPerson(approvedRecord);
-check('an approved person still has it open', record.conversationOpen === true);
+await tagged`insert into messages (account_id, author, body_encrypted)
+             values ('acct-approved-record', 'client', ${encrypt('Can we talk about the timing?')})`;
+let record = await askPerson(approvedRecord);
+check('the record screen says the conversation is open on a go', record.conversationOpen === true,
+  [record.decision, record.approvedAt]);
+check('and it says a reply is owed on the same record',
+  record.awaitingReply === true, record.awaitingReply);
 
 const plainNoGo = await newOrder();
 await tagged`update orders set decision = 'no-go', decision_at = now(),
                                client_account_id = 'acct-plain-no' where id = ${plainNoGo}`;
 record = await askPerson(plainNoGo);
-check('a no-go with nothing quoted stays closed', record.conversationOpen === false,
-  [record.approvedAt, record.quotes.length]);
+check('a no-go stays closed', record.conversationOpen === false, record.approvedAt);
 
 
 console.log('');

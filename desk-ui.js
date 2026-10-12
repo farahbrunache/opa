@@ -115,10 +115,6 @@ export function owed(person) {
       next: aDayOn ? 'Save the call record' : null, go: '#call', button: 'The call',
     });
   }
-  if (person.quoteWaiting) {
-    out.push({ what: 'They answered a quote.', yours: true,
-      next: 'Answer their quote', go: '#quotes', button: 'Quotes' });
-  }
   const now = person.chapters?.[person.chapters.length - 1];
   if (now && now.number > 1) {
     if (!now.decision) {
@@ -131,7 +127,7 @@ export function owed(person) {
   const roadmap = {
     review: ['Roadmap changes are waiting on you.', 'Review the roadmap changes'],
     redraw: ['An outcome came in since the roadmap was drawn.', 'Redraw the roadmap'],
-    send: ['Nothing of theirs is open. The next action is ready to send.', 'Send the next action'],
+    send: ['Nothing of theirs is on their page. A drafted activity is waiting.', 'Move an activity to To do'],
   }[person.roadmap?.due];
   if (roadmap) {
     out.push({ what: roadmap[0], yours: true, next: roadmap[1], go: '#milestones', button: 'Roadmap' });
@@ -143,7 +139,7 @@ export function owed(person) {
   return out;
 }
 
-export const MODEL_ACTIONS = ['draft', 'quote-worth', 'call-fields-draft', 'questions-draft', 'find-matches', 'call-gaps', 'roadmap-draft'];
+export const MODEL_ACTIONS = ['draft', 'call-fields-draft', 'questions-draft', 'find-matches', 'call-gaps', 'roadmap-draft'];
 
 export const aiScope = { withSummary: false };
 

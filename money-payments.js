@@ -1,7 +1,7 @@
 import { el, call, weekday, money } from '/desk-ui.js';
 import { renderSpeed } from '/money-speed.js';
 
-function renderCounts(map) {
+function renderCounts(map, access) {
   const counts = document.getElementById('counts');
   counts.textContent = '';
   for (const [label, count, tone] of [
@@ -13,6 +13,10 @@ function renderCounts(map) {
     tile.append(el('b', String(count), count ? tone : null), el('span', label));
     counts.append(tile);
   }
+  const line = document.getElementById('accessline');
+  line.textContent = access
+    ? `Access-rate sessions · ${access.monthName}: ${access.given} of ${access.cap} given · ${access.left} left · ${access.waiting} on ${access.nextMonthName}'s list`
+    : 'Access-rate sessions: rates not set';
   const waiting = map.pending || 0;
   document.getElementById('waitingcount').textContent = `${waiting} waiting on you`;
   const onToday = document.getElementById('ontoday');
@@ -43,7 +47,7 @@ function renderHistoryRow(order) {
   const item = el('li', null, 'item');
   const [said, tag, tone] = statusOf(order);
   const head = el('div', null, 'line');
-  head.append(el('span', `${money(order.amount)} · ${order.label}`, 'title'), el('span', tag, `tag ${tone}`));
+  head.append(el('span', `${money(order.amount)} · ${order.label}${order.kind === 'session' ? ` · ${order.rateLabel} session` : ''}`, 'title'), el('span', tag, `tag ${tone}`));
   item.append(head);
   const codeLine = el('div', null, 'line');
   codeLine.append(el('span', order.reference, 'mono muted'), el('span', sessionOf(order), 'muted'));
@@ -125,7 +129,7 @@ async function loadHistory() {
 export async function loadPayments() {
   const data = await call('/api/payments?action=list');
   renderSpeed(data.speed);
-  renderCounts(data.counts || {});
+  renderCounts(data.counts || {}, data.access);
   await loadHistory();
 }
 

@@ -94,22 +94,25 @@ console.log('two kinds of owner line');
 
 console.log('ticking off steps');
 {
-  const refused = await as('acct-cp-other', 'POST', 'step', { reference: 'CPAGE-AAAAA', step: 1, done: true });
-  check('a session the account doesn\'t own is refused', refused.status === 404, refused.out);
-  const past = await as('acct-cp-go', 'POST', 'step', { reference: 'CPAGE-AAAAA', step: 9, done: true });
-  check('a step the sheet doesn\'t have is refused', past.status === 400, past.out);
-  const ticked = await as('acct-cp-go', 'POST', 'step', { reference: 'CPAGE-AAAAA', step: 2, done: true });
-  check('their own step ticks', ticked.status === 200 && ticked.out.stepsDone.join() === '2', ticked.out);
-  await as('acct-cp-go', 'POST', 'step', { reference: 'CPAGE-AAAAA', step: 2, done: true });
-  await as('acct-cp-go', 'POST', 'step', { reference: 'CPAGE-AAAAA', step: 3, done: true });
-  const undone = await as('acct-cp-go', 'POST', 'step', { reference: 'CPAGE-AAAAA', step: 3, done: false });
-  check('and unticks', undone.out.stepsDone.join() === '2', undone.out);
+  const mine = (await as('acct-cp-go', 'GET', 'mine')).out;
+  const steps = mine.roadmap.filter((a) => a.fromCall);
+  check('each numbered step is on their roadmap, to do', steps.length === 4 && steps.every((a) => a.group === 'todo'), mine.roadmap);
+  const refused = await as('acct-cp-other', 'POST', 'activity', { activity: steps[0].id, done: true });
+  check('a step the account doesn\'t own is refused', refused.status === 404, refused.out);
+  const past = await as('acct-cp-go', 'POST', 'activity', { activity: 999999, done: true });
+  check('a step that isn\'t there is refused', past.status === 404, past.out);
+  const ticked = await as('acct-cp-go', 'POST', 'activity', { activity: steps[1].id, done: true });
+  check('their own step ticks', ticked.status === 200 && ticked.out.roadmap.find((a) => a.id === steps[1].id).group === 'done', ticked.out);
+  await as('acct-cp-go', 'POST', 'activity', { activity: steps[1].id, done: true });
+  await as('acct-cp-go', 'POST', 'activity', { activity: steps[2].id, done: true });
+  const undone = await as('acct-cp-go', 'POST', 'activity', { activity: steps[2].id, done: false });
+  check('and unticks', undone.out.roadmap.filter((a) => a.group === 'done').length === 1, undone.out);
   const trail = await tagged`select kind from case_events where order_id = ${go.id} and kind like 'step.%' order by id`;
   check('each change writes one trail line, a repeat writes none',
     trail.map((r) => r.kind).join() === 'step.done,step.done,step.undone', trail);
-  const mine = (await as('acct-cp-go', 'GET', 'mine')).out;
-  check('the page gets the ticks and the first name',
-    mine.sessions[0].stepsDone.join() === '2' && mine.firstName === 'Invented', mine.firstName);
+  const again = (await as('acct-cp-go', 'GET', 'mine')).out;
+  check('the page gets the roadmap and the first name',
+    again.roadmap.filter((a) => a.group === 'done').length === 1 && again.firstName === 'Invented', again.firstName);
 }
 
 console.log('introductions on the client page');
@@ -136,44 +139,39 @@ console.log('introductions on the client page');
   check('one that went nowhere isn\'t shown', after.length === 1 && after[0].name.startsWith('Someone on'), after);
 }
 
-console.log('your path');
+console.log('your roadmap');
 {
   const [plan] = await tagged`insert into plans (order_id, case_id, path) values (${go.id}, ${go.caseId}, 'smallest') returning id`;
-  await tagged`insert into milestones (plan_id, position, title_encrypted, status, outcome_encrypted)
-               values (${plan.id}, 1, ${encrypt('Invented milestone done')}, 'worked', ${encrypt('PRIVATE-OUTCOME')}),
-                      (${plan.id}, 2, ${encrypt('Invented quiet milestone')}, 'ghosted', null),
-                      (${plan.id}, 3, ${encrypt('Invented later milestone')}, 'planned', null)`;
-  await tagged`update milestones set shown_at = now() where plan_id = ${plan.id} and position < 3`;
-  const [m] = await tagged`select id from milestones where plan_id = ${plan.id} order by position limit 1`;
-  await tagged`insert into action_items (milestone_id, position, title_encrypted) values (${m.id}, 1, ${encrypt('PRIVATE-ACTION')})`;
-  await tagged`insert into projects (case_id, title_encrypted, state, due_at, note_encrypted)
-               values (${go.caseId}, ${encrypt('Invented work owed')}, 'to do', now() + interval '3 days', ${encrypt('PRIVATE-NOTE')}),
-                      (${go.caseId}, ${encrypt('Invented dropped work')}, 'dropped', null, null)`;
-  await tagged`insert into quotes (account_id, amount_cents, scope_encrypted, status)
-               values ('acct-cp-go', 12300, ${encrypt('Invented offer title. More words.')}, 'offered')`;
+  const [done] = await tagged`insert into activities (case_id, plan_id, position, title_encrypted, state, shown_at, closed_at, outcome_encrypted)
+               values (${go.caseId}, ${plan.id}, 100, ${encrypt('Invented activity done')}, 'done', now(), now(), ${encrypt('PRIVATE-OUTCOME')}) returning id`;
+  const [open] = await tagged`insert into activities (case_id, plan_id, position, title_encrypted, state, shown_at, cadence, next_at)
+               values (${go.caseId}, ${plan.id}, 101, ${encrypt('Invented open activity')}, 'todo', now(), 'weekly', now() + interval '3 days') returning id`;
+  await tagged`insert into activities (case_id, plan_id, position, title_encrypted, state)
+               values (${go.caseId}, ${plan.id}, 102, ${encrypt('Invented drafted activity')}, 'drafted')`;
+  await tagged`insert into activities (case_id, plan_id, position, title_encrypted, state, drop_reason, closed_at, outcome_encrypted)
+               values (${go.caseId}, ${plan.id}, 103, ${encrypt('Invented dropped activity')}, 'dropped', 'tried-it', now(), ${encrypt('PRIVATE-WHY')})`;
+  await tagged`insert into projects (case_id, activity_id, title_encrypted, state, due_at, note_encrypted)
+               values (${go.caseId}, ${open.id}, ${encrypt('PRIVATE-WORK')}, 'to do', now() + interval '3 days', ${encrypt('PRIVATE-NOTE')})`;
+  await tagged`insert into held_sessions (case_id, rate, used_at, activity_id) values (${go.caseId}, 'access', now(), ${done.id})`;
   const mine = await as('acct-cp-go', 'GET', 'mine');
-  const path = mine.out.path;
-  const by = (title) => path.find((p) => p.title === title);
-  check('a finished milestone is done, with its date', by('Invented milestone done')?.group === 'done'
-    && by('Invented milestone done').at, path);
-  check('ghosted reads as stalled', by('Invented quiet milestone')?.said === 'Stalled', path);
-  check('a milestone not shown yet is left out', !by('Invented later milestone'), path);
-  check('work owed is scheduled with its due date', by('Invented work owed')?.group === 'next'
-    && by('Invented work owed').due, path);
-  check('dropped work is left out', !by('Invented dropped work'), path);
-  check('an offer shows by its title and state', by('Invented offer title.')?.said === 'Offer waiting on you', path);
-  check('each item carries only a kind, a title, a state and dates',
-    path.every((p) => Object.keys(p).sort().join() === 'at,due,group,kind,said,title'), path[0]);
-  check('and the kind is one of the three the server adds',
-    path.every((p) => ['Milestone', 'Work', 'Offer'].includes(p.kind)), path.map((p) => p.kind));
-  check('no note, outcome, action item or amount reaches the client',
-    !/PRIVATE-|12300|\b123\b/.test(mine.raw), mine.raw.slice(0, 200));
+  const roadmap = mine.out.roadmap;
+  const by = (title) => roadmap.find((p) => p.title === title);
+  check('a done activity is done, with its date', by('Invented activity done')?.group === 'done' && by('Invented activity done').at, roadmap);
+  check('one on their page is to do, with its due date and that Farah is working on it',
+    by('Invented open activity')?.group === 'todo' && by('Invented open activity').due && by('Invented open activity').yours === true, roadmap);
+  check('a drafted one is left out', !by('Invented drafted activity'), roadmap);
+  check('a dropped one is left out', !by('Invented dropped activity'), roadmap);
+  check('each item carries an id, a title, which list, dates, and whether it came from the call',
+    roadmap.every((p) => Object.keys(p).sort().join() === 'at,due,fromCall,group,id,since,title,yours'), roadmap[0]);
+  check('no outcome, note, work title, reason, rate or amount reaches the client',
+    !/PRIVATE-|access|tried-it|12300/.test(mine.raw), mine.raw.slice(0, 200));
 }
 
 console.log('demo rows');
 {
   check('demo data seeds', (await owner('POST', 'demo-seed')).status === 201);
-  const seeded = await tagged`select count(*)::int as n from step_ticks where is_demo`;
+  const seeded = await tagged`select count(*)::int as n from activities a join cases k on k.id = a.case_id
+                              where k.is_demo and a.step_order_id is not null and a.state = 'done'`;
   check('with two ticked steps', seeded[0].n === 2, seeded);
   const auto = await tagged`select count(*)::int as n from messages where author = 'auto' and account_id like 'demo-%'`;
   const templ = await tagged`select count(*)::int as n from messages where from_template and account_id like 'demo-%'`;
@@ -182,9 +180,9 @@ console.log('demo rows');
                             join orders b on b.id = i.b_order_id where a.is_demo and b.is_demo`;
   check('and a client-to-client introduction', both[0].n === 1, both);
   check('demo data clears', (await owner('POST', 'demo-clear')).status === 200);
-  const left = await tagged`select count(*)::int as n from step_ticks where is_demo`;
-  check('taking the ticks with it', left[0].n === 0, left);
-  const real = await tagged`select count(*)::int as n from step_ticks where order_id = ${go.id}`;
+  const left = await tagged`select count(*)::int as n from activities a join cases k on k.id = a.case_id where k.is_demo`;
+  check('taking the roadmap with it', left[0].n === 0, left);
+  const real = await tagged`select count(*)::int as n from activities where step_order_id = ${go.id} and state = 'done'`;
   check('and leaving a real one', real[0].n === 1, real);
 }
 

@@ -105,7 +105,12 @@ export async function loadCard(sessions) {
   if (!data.rates) return;
 
   const access = data.access;
-  const lines = [`A limited number each month. ${access.left} left in ${access.monthName}. Rate and availability subject to change.`,
+  rates.append(rate('Standard rate', data.rates.standard,
+    ['The full price of a session. Pay this rate if you can.', 'Rate and availability subject to change.'],
+    go('Buy a session', '/buy?session=standard')));
+  const lines = [`The same session, for anyone who can't pay ${money(data.rates.standard)}. It is priced below what a session costs `
+      + 'and the standard rate covers the rest, so there are only a few each month.',
+    `${access.left} left in ${access.monthName}. Rate and availability subject to change.`,
     `Request one. If none are left, join the ${access.nextMonthName} list or buy at the standard rate.`];
   let accessButton;
   if (data.request && data.request.toPay) {
@@ -121,12 +126,11 @@ export async function loadCard(sessions) {
     accessButton = requestButton(said);
   }
   rates.append(rate('Access rate', data.rates.access, lines, accessButton));
-  rates.append(rate('Standard rate', data.rates.standard, ['Any time. Rate and availability subject to change.'], go('Buy a session', '/buy?session=standard', true)));
-  fine.textContent = 'Same session at either rate. The rate changes the price, not the help. Nobody is asked why.';
+  fine.textContent = 'The rate changes the price, not the help. Nobody is asked why.';
 }
 
 function requestButton(said) {
-  const button = el('button', 'Request one', 'cbtn');
+  const button = el('button', 'Request one', 'cbtn ghost');
   button.type = 'button';
   if (PREVIEW) return button;
   button.addEventListener('click', async () => {

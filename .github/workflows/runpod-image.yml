@@ -1,0 +1,57 @@
+name: Build the RunPod worker image
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: The Ollama model to bake in, e.g. llama3.2
+        required: true
+        default: llama3.2
+
+jobs:
+  build:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make room
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          df -h /
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Name the tag after the model
+        id: tag
+        run: |
+          model='${{ inputs.model }}'
+          safe=$(printf '%s' "$model" | tr -c 'a-zA-Z0-9._-' '-')
+          echo "ref=ghcr.io/${{ github.repository_owner }}/one-percent-runpod:$safe" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: runpod
+          push: true
+          build-args: OLLAMA_MODEL=${{ inputs.model }}
+          tags: ${{ steps.tag.outputs.ref }}
+
+      - name: Summary
+        run: |
+          {
+            echo '## Image'
+            echo
+            echo '```'
+            echo '${{ steps.tag.outputs.ref }}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

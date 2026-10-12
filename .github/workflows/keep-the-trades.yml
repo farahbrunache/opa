@@ -1,0 +1,39 @@
+name: Keep the trade list
+
+on:
+  schedule:
+    - cron: '23 6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: keep-the-trades
+  cancel-in-progress: false
+
+jobs:
+  copy:
+    name: Copy the trade list
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Copy
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          SWEEP_SECRET: ${{ secrets.SWEEP_SECRET }}
+        run: |
+          set -euo pipefail
+          [ -n "$APP_URL" ] || { echo "::error title=APP_URL is not set::Nothing to call."; exit 1; }
+          [ -n "$SWEEP_SECRET" ] || { echo "::error title=SWEEP_SECRET is not set::The job cannot prove itself."; exit 1; }
+
+          origin=$(printf '%s' "$APP_URL" | sed -E 's#^(https?://[^/]+).*#\1#')
+          answer=$(curl -sS --fail-with-body --max-time 60 \
+            -X POST "$origin/api/sweep?action=trades" \
+            -H "authorization: Bearer $SWEEP_SECRET") || {
+            echo "::error title=The trade list wasn't copied::It answered: $answer"
+            exit 1
+          }
+
+          {
+            echo "## Trade list"
+            echo
+            printf '%s' "$answer" | jq -r '"\(.titles) job titles copied, \(.retired) no longer on their list."'
+          } >> "$GITHUB_STEP_SUMMARY"

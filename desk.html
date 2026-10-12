@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Desk — One Percent</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="wrap inside">
+
+  <div id="deskmsg" hidden></div>
+
+  <div id="signin" hidden>
+    <h1>Desk</h1>
+    <div class="actions"><a class="button go-on" id="lgo" href="/api/auth?action=start&amp;to=/desk">Sign in with Skills Economy</a></div>
+    <div id="lmsg" hidden></div>
+  </div>
+
+  <div id="todayview" hidden>
+    <div class="topbar">
+      <div class="titled">
+        <h1>Desk</h1>
+        <p class="date" id="todaydate"></p>
+      </div>
+      <button type="button" class="iconbtn" id="todayagain">Refresh</button>
+    </div>
+    <nav class="tabs" aria-label="Desk">
+      <a aria-current="page" href="/desk">Today</a>
+      <a href="/desk?state=waiting">Everyone</a>
+      <a href="/funnel">Funnel</a>
+      <a href="/money">Money</a>
+    </nav>
+    <div id="tmsg" hidden></div>
+    <section class="outreach" aria-labelledby="ohead">
+      <div class="otop">
+        <div>
+          <span class="cap" id="ohead">Outreach</span>
+          <div class="ocount"><b id="tpool">—</b> approached</div>
+          <div class="muted osm"><span id="tweek">0</span> this week</div>
+        </div>
+        <button type="button" class="btn primary oplus" id="taddone">+1 Approached</button>
+      </div>
+      <div class="olast osm">
+        <span id="tlast"></span>
+        <button type="button" class="olink" id="tundo" hidden>Undo</button>
+        <button type="button" class="olink" id="tfix">Fix count</button>
+      </div>
+      <form class="ofixrow" id="tfixform" hidden>
+        <label class="visually-hidden" for="tfixsize">Approached</label>
+        <input id="tfixsize" inputmode="numeric" autocomplete="off" maxlength="7">
+        <button type="submit" class="btn">Save</button>
+      </form>
+    </section>
+    <form class="searchrow" role="search" action="/desk" method="get">
+      <label class="visually-hidden" for="tfind">Find somebody by name or code</label>
+      <input type="search" id="tfind" name="q" placeholder="Search name or code" autocomplete="off"
+             maxlength="80" enterkeyhint="search">
+    </form>
+    <div class="filters" id="todaycount"></div>
+    <ul class="list" id="confirmlist" aria-live="polite"></ul>
+    <ul class="list" id="todaylist" aria-live="polite"></ul>
+    <div class="pages" id="todaypager" hidden></div>
+    <div class="tools">
+      <a class="btn ghost small" href="/questions">Question lists</a>
+      <a class="btn ghost small" href="/ai">AI check</a>
+      <a class="btn ghost small" href="/desk?view=prompts">Prompts</a>
+      <button type="button" class="btn ghost small" id="tscript">Export the script</button>
+      <button type="button" class="btn ghost small" id="demodata"></button>
+      <button type="button" class="btn ghost small" id="tlogout">Sign out</button>
+    </div>
+  </div>
+
+  <div id="queue" hidden>
+    <div class="topbar">
+      <div class="titled">
+        <h1>Everyone</h1>
+        <p class="date" id="today"></p>
+        <p class="date" id="qfigures"></p>
+      </div>
+      <button type="button" class="iconbtn" id="again">Refresh</button>
+    </div>
+    <nav class="tabs" aria-label="Desk">
+      <a href="/desk">Today</a>
+      <a aria-current="page" href="/desk?state=waiting">Everyone</a>
+      <a href="/funnel">Funnel</a>
+      <a href="/money">Money</a>
+    </nav>
+    <div id="qmsg" hidden></div>
+    <form class="searchrow" role="search" action="/desk" method="get">
+      <label class="visually-hidden" for="qfind">Find somebody by name or code</label>
+      <input type="search" id="qfind" name="q" placeholder="Search name or code" autocomplete="off"
+             maxlength="80" enterkeyhint="search">
+    </form>
+
+    <nav class="stat4" id="tabs" aria-label="Queues"></nav>
+    <ul class="list rows" id="people" aria-live="polite"></ul>
+    <p class="note" id="qcount"></p>
+    <div class="pages" id="pager" hidden></div>
+
+    <section class="sec" id="whobrought">
+      <div class="sechead"><h2>Who brought whom</h2><span class="count" id="whocount"></span></div>
+      <div class="stat3" id="whotiles"></div>
+      <ul class="tree" id="whotree"></ul>
+      <div class="pages" id="whopager" hidden></div>
+    </section>
+
+    <section class="sec">
+      <div class="sechead"><h2>Introductions to make</h2><span class="count" id="pairscount"></span></div>
+      <ul class="list" id="pairs"></ul>
+      <button type="button" class="btn ghost" id="morepairs" hidden>Show 3 more pairs</button>
+    </section>
+
+    <section class="sec">
+      <div class="sechead"><h2>Where your minutes go</h2><span class="count" id="minutesdays"></span></div>
+      <p class="note" id="minutessaid"></p>
+      <div class="box bars" id="minutes" hidden></div>
+    </section>
+  </div>
+
+  <div id="promptsview" hidden>
+    <div class="topbar">
+      <a class="back" href="/desk">&larr; Desk</a>
+      <button type="button" class="iconbtn" id="againprompts">Refresh</button>
+    </div>
+    <header class="phead">
+      <h1>Prompts</h1>
+      <div class="pmeta" id="promptcount"></div>
+    </header>
+    <div id="pmsg" hidden></div>
+    <div class="stack" id="promptlist"></div>
+  </div>
+
+  <div id="record" hidden>
+    <div class="topbar">
+      <a class="back" href="/desk" id="back">&larr; Desk</a>
+      <button type="button" class="iconbtn" id="againrecord">Refresh</button>
+    </div>
+    <div id="rmsg" hidden></div>
+
+    <header class="phead">
+      <h1 id="ref"></h1>
+      <div class="pmeta" id="called"></div>
+      <a class="btn ghost small" id="seeas" href="/preview"></a>
+    </header>
+
+    <div class="chapters" id="chapters" role="group" aria-label="Chapters" hidden></div>
+    <div class="histbar" id="histbar" hidden>
+      <span id="histsaid"></span>
+      <button type="button" class="iconbtn" id="histback"></button>
+    </div>
+    <div class="stack" id="pastchapter" hidden></div>
+    <div class="aiscope" id="aiscope" hidden>
+      <span class="label">What AI reads on this page</span>
+      <p id="aiscopetext"></p>
+      <div class="chips"><button type="button" class="chip" id="aisummary" aria-pressed="false" hidden></button></div>
+    </div>
+
+    <form class="sheet" id="pivotsheet" hidden novalidate>
+      <div class="line"><span class="label" id="pivothead"></span><button type="button" class="iconbtn" id="pivotcancel">Cancel</button></div>
+      <div class="field">
+        <label for="pivotname">Name</label>
+        <input id="pivotname" type="text" autocomplete="off" maxlength="120">
+      </div>
+      <div class="field">
+        <label for="pivotstart">Starts</label>
+        <input id="pivotstart" type="date">
+      </div>
+      <div class="field">
+        <label for="pivotchanged">What changed, in one line</label>
+        <input id="pivotchanged" type="text" autocomplete="off" maxlength="300">
+      </div>
+      <div class="field">
+        <label for="pivotbrief">Starting brief</label>
+        <textarea id="pivotbrief" rows="5" maxlength="8000"></textarea>
+      </div>
+      <div class="field" id="pivotoldnamefield" hidden>
+        <label for="pivotoldname" id="pivotoldnamelabel"></label>
+        <input id="pivotoldname" type="text" autocomplete="off" maxlength="120">
+      </div>
+      <span class="label">What comes along</span>
+      <ul class="carry" id="pivotcarry"></ul>
+      <div class="field">
+        <label for="pivotsummary" id="pivotsummarylabel"></label>
+        <textarea id="pivotsummary" rows="3" maxlength="4000"></textarea>
+      </div>
+      <div class="pair">
+        <button type="button" class="btn ai paid" id="pivotsumdraft"><span class="coin" role="img" aria-label="Costs money" title="Costs money">$</span><span class="paidlabel">Write the summary</span></button>
+      </div>
+      <div class="pair"><button type="submit" class="btn primary" id="pivotgo"></button></div>
+    </form>
+
+    <div class="nextup" id="nextup">
+      <span class="label">Do this next</span>
+      <p id="nextsaid"></p>
+      <p class="faint" id="statewhy" hidden></p>
+      <div class="pair" id="nextgo" hidden></div>
+      <div class="pair" id="caseacts"></div>
+      <form class="stack" id="blockform" hidden novalidate>
+        <div class="field">
+          <label for="blockreason">What it's waiting on</label>
+          <input id="blockreason" type="text" autocomplete="off" maxlength="500">
+        </div>
+        <div class="field">
+          <label for="blockuntil">Until (optional)</label>
+          <input id="blockuntil" type="date">
+        </div>
+        <div class="pair"><button type="submit" class="btn">Block it</button></div>
+      </form>
+    </div>
+
+    <div class="box" id="decision">
+      <div class="line"><span class="label" id="decidelabel">Decision</span><span class="faint" id="decided"></span></div>
+      <div class="seg" id="decide" role="group" aria-label="Go or no-go"></div>
+      <div class="line"><span class="label">Their goal</span><span class="faint" id="planset"></span></div>
+      <div class="seg" id="plan" role="group" aria-label="Their goal"></div>
+    </div>
+
+    <div class="box" id="brought" hidden>
+      <div class="line"><span class="label">Brought by</span><button type="button" class="iconbtn" id="bchange">Change</button></div>
+      <div class="stack" id="bby"></div>
+      <form class="stack" id="bform" hidden novalidate>
+        <div class="seg three" id="bhow" role="group" aria-label="Brought by">
+          <button type="button" class="plain" data-how="person" aria-pressed="false">A person</button>
+          <button type="button" class="plain" data-how="outreach" aria-pressed="false">Your outreach</button>
+          <button type="button" class="plain" data-how="unknown" aria-pressed="false">Don't know</button>
+        </div>
+        <div class="field" id="breffield" hidden>
+          <label for="bref">Their 10-character code</label>
+          <input id="bref" type="text" autocomplete="off" autocapitalize="characters" maxlength="11">
+        </div>
+        <div class="pair">
+          <button type="submit" class="btn primary">Save</button>
+          <button type="button" class="btn ghost" id="bcancel">Cancel</button>
+        </div>
+      </form>
+      <div class="line" id="bbroughthead" hidden><span class="label" id="bbroughtlabel"></span></div>
+      <div class="stack" id="bbrought"></div>
+      <div class="pages" id="bbroughtpager" hidden></div>
+      <div class="flagbox">
+        <p class="faint" id="flagsaid" hidden></p>
+        <button type="button" class="btn ghost danger" id="flagopen">Flag this person</button>
+        <form class="stack" id="flagform" hidden novalidate>
+          <div class="field">
+            <label for="flagwhy">Why (only you see this)</label>
+            <input id="flagwhy" type="text" autocomplete="off" maxlength="500">
+          </div>
+          <div class="pair">
+            <button type="submit" class="btn primary" id="flagyes"></button>
+            <button type="button" class="btn ghost" id="flagno">Cancel</button>
+          </div>
+        </form>
+        <button type="button" class="btn ghost" id="unflag" hidden>Remove the flag</button>
+      </div>
+    </div>
+
+    <nav class="jump" aria-label="Sections">
+      <a href="#brief" id="jumpbrief" hidden>Brief</a><a href="#messages">Messages</a><a href="#call">Calls</a><a href="#catchups">Catch-ups</a><a href="#steps">Next steps</a><a href="#milestones">Roadmap</a><a href="#questions">Questions</a><a href="#work">Work</a><a href="#quotes">Quotes</a><a href="#matches">People</a><a href="#intros">Introductions</a><a href="#skills">Skills</a><a href="#progress">Progress</a><a href="#log">Activity log</a>
+    </nav>
+
+    <section class="sec" id="brief" hidden>
+      <div class="sechead"><h2>Starting brief</h2><span class="count" id="briefsaid"></span></div>
+      <div class="box">
+        <p class="brief" id="brieftext"></p>
+        <div class="pair">
+          <button type="button" class="btn small ghost" id="brieffull" hidden></button>
+          <button type="button" class="btn small" id="briefedit">Edit</button>
+          <button type="button" class="btn ai paid" id="brieffill"><span class="coin" role="img" aria-label="Costs money" title="Costs money">$</span><span class="paidlabel">Fill call lines from it</span></button>
+        </div>
+        <form class="stack" id="brieflines" novalidate>
+          <span class="label">Call lines</span>
+          <div class="grid2" id="brieflinefields"></div>
+          <div class="pair"><button type="submit" class="btn">Save the lines</button></div>
+        </form>
+        <form class="stack" id="briefform" hidden novalidate>
+          <label class="visually-hidden" for="briefbody">Starting brief</label>
+          <textarea id="briefbody" rows="8" maxlength="8000"></textarea>
+          <div class="pair"><button type="submit" class="btn primary">Save</button></div>
+        </form>
+      </div>
+    </section>
+
+    <section class="sec" id="messages">
+      <div class="sechead"><h2>Messages</h2><span class="count" id="threadnote"></span></div>
+      <div class="thread" id="thread"></div>
+      <div class="pages" id="threadpager" hidden></div>
+      <form class="box" id="reply" hidden novalidate>
+        <div class="seg" id="sendmode" role="group" aria-label="Send as">
+          <button type="button" class="plain" data-mode="me" aria-pressed="true">Message from you</button>
+          <button type="button" class="plain" data-mode="auto" aria-pressed="false">Auto update</button>
+        </div>
+        <div class="chips" id="quick"></div>
+        <label class="visually-hidden" for="replybody">Write back</label>
+        <textarea id="replybody" rows="4" maxlength="4000"></textarea>
+        <div class="pair">
+          <button type="submit" class="btn primary">Send</button>
+          <button type="button" class="btn ai paid" id="draftreply"><span class="coin" role="img" aria-label="Costs money" title="Costs money">$</span><span class="paidlabel">Draft a reply</span></button>
+        </div>
+        <p class="note" id="replydraftnote"></p>
+      </form>
+    </section>
+
+    <section class="sec" id="call">
+      <div class="sechead"><h2>Calls</h2><span class="count" id="callcount"></span></div>
+      <div class="chips" id="callpick" role="group" aria-label="Pick a call"></div>
+      <div class="stack" id="calls"></div>
+    </section>
+
+    <section class="sec" id="catchups">
+      <div class="sechead"><h2>Catch-ups</h2><span class="count" id="recapcount"></span></div>
+      <div class="pair">
+        <button type="button" class="btn ai paid" id="recapit"><span class="coin" role="img" aria-label="Costs money" title="Costs money">$</span><span class="paidlabel">Catch me up</span></button>
+      </div>
+      <ul class="cu" id="recaps"></ul>
+    </section>
+
+    <section class="sec" id="steps">
+      <div class="sechead"><h2>Their next steps</h2><span class="count" id="sheetstate"></span></div>
+      <form class="stack" id="recommendform" novalidate>
+        <span class="label">Point them to</span>
+        <div class="chips" id="sheetlinks"></div>
+        <label class="visually-hidden" for="recommendbody">Their next steps</label>
+        <textarea id="recommendbody" rows="8" maxlength="8000"></textarea>
+        <div class="pair">
+          <button type="submit" class="btn primary">Send</button>
+          <button type="button" class="btn" id="usetemplate">Use the template</button>
+          <button type="button" class="btn ai paid" id="draftit"><span class="coin" role="img" aria-label="Costs money" title="Costs money">$</span><span class="paidlabel">Draft from the call</span></button>
+        </div>
+        <p class="note" id="draftnote"></p>
+        <div class="pair" id="models"></div>
+        <div class="box">
+          <span class="label">How next steps are written</span>
+          <ol class="rules" id="sheetrules"></ol>
+        </div>
+      </form>
+    </section>
+
+    <section class="sec" id="milestones">
+      <div class="sechead"><h2>Roadmap</h2><span class="count" id="stepcount"></span></div>
+      <div id="roadmap"></div>
+      <div class="stack" id="milestonelist"></div>
+      <form class="searchrow" id="addstep" hidden novalidate>
+        <label class="visually-hidden" for="steptitle">Add a milestone</label>
+        <textarea id="steptitle" rows="1" maxlength="300" placeholder="Add a milestone"></textarea>
+        <button type="submit" class="btn">Add</button>
+      </form>
+    </section>
+
+    <section class="sec" id="questions">
+      <div class="sechead"><h2>Questions to ask</h2><span class="count" id="qasked"></span></div>
+      <ol class="flow3" id="flow3"></ol>
+      <div class="label" id="qfor"></div>
+      <div class="chips" id="qsets" role="group" aria-label="Question sets"></div>
+      <div class="pair" id="qpick"></div>
+      <div class="aibox" id="qai" hidden>
+        <span class="label">Suggested from the calls</span>
+        <p id="qaitext"></p>
+        <div class="pair"><button type="button" class="btn ghost" id="qclear">Clear suggestions</button></div>
+      </div>
+      <ul class="qlist" id="qlist"></ul>
+      <div class="qbar">
+        <button type="button" class="btn primary" id="qtomsg" hidden>Ask these in a message</button>
+        <a class="btn ghost" href="/questions">Edit the lists</a>
+      </div>
+    </section>
+
+    <section class="sec" id="work">
+      <div class="sechead"><h2>Work you owe them</h2><span class="count" id="workcount"></span></div>
+      <div class="stack" id="worklist"></div>
+      <form class="box" id="addwork" hidden novalidate>
+        <span class="label">Take on new work</span>
+        <div class="field">
+          <label for="worktitle">What's the work</label>
+          <input id="worktitle" type="text" autocomplete="off" maxlength="300">
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label for="workquote">Quote it's for</label>
+            <select id="workquote"></select>
+          </div>
+          <div class="field">
+            <label for="workdue">Due (optional)</label>
+            <input id="workdue" type="date">
+          </div>
+        </div>
+        <div class="pair"><button type="submit" class="btn">Take it on</button></div>
+      </form>
+    </section>
+
+    <section class="sec" id="quotes">
+      <div class="sechead"><h2>Quotes</h2><span class="count" id="quotenote"></span></div>
+      <div class="stack" id="quotelist"></div>
+      <form class="box" id="writequote" hidden novalidate>
+        <span class="label">New quote</span>
+        <p class="faint" id="breakeven"></p>
+        <div class="grid2">
+          <div class="field">
+            <label for="amount">Amount</label>
+            <input id="amount" type="number" inputmode="decimal" min="1" step="0.01" autocomplete="off" placeholder="$0">
+          </div>
+          <div class="field">
+            <label for="scope">What it covers</label>
+            <textarea id="scope" rows="2" maxlength="2000"></textarea>
+          </div>
+        </div>
+        <div class="pair" id="worth"><button type="submit" class="btn">Send the quote</button></div>
+        <p class="note" id="worthsaid"></p>
+      </form>
+    </section>
+
+    <section class="sec" id="matches">
+      <div class="sechead"><h2>People to approach</h2><span class="count" id="contactcount"></span></div>
+      <div class="stack" id="contacts"></div>
+      <form class="box" id="addcontact" hidden novalidate>
+        <span class="label">Add someone to approach</span>
+        <div class="field">
+          <label for="contactwho" id="contactwholabel">Who</label>
+          <input id="contactwho" type="text" autocomplete="off" maxlength="300">
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label for="contactwhy">Why this one</label>
+            <input id="contactwhy" type="text" autocomplete="off" maxlength="500">
+          </div>
+          <div class="field">
+            <label for="contactwhere">Where (optional)</label>
+            <input id="contactwhere" type="text" autocomplete="off" maxlength="200">
+          </div>
+        </div>
+        <div class="pair" id="matchgo"><button type="submit" class="btn">Add</button></div>
+      </form>
+      <div class="aibox" id="found" hidden></div>
+    </section>
+
+    <section class="sec" id="intros">
+      <div class="sechead"><h2>Introductions</h2><span class="count" id="introcount"></span></div>
+      <div class="stack" id="couldwork"></div>
+      <div class="stack" id="introlist"></div>
+      <form class="box" id="introduce" novalidate>
+        <span class="label">Record an introduction</span>
+        <div class="field">
+          <label for="introwho">Client reference code, or a profile link</label>
+          <input id="introwho" type="text" autocomplete="off" autocapitalize="off" maxlength="500">
+        </div>
+        <div class="field">
+          <label for="introreason">Why these two</label>
+          <textarea id="introreason" rows="2" maxlength="2000"></textarea>
+        </div>
+        <div class="pair"><button type="submit" class="btn">Record the introduction</button></div>
+      </form>
+    </section>
+
+    <section class="sec" id="skills">
+      <div class="sechead"><h2>Skills</h2><span class="count" id="skillcount"></span></div>
+      <div id="jobtitle"></div>
+    </section>
+
+    <section class="sec" id="progress">
+      <div class="sechead"><h2>Progress</h2><span class="count" id="progresscount"></span></div>
+      <div class="box progress" id="ends"></div>
+      <span class="label" id="ordershead"></span>
+      <div class="stack" id="orders"></div>
+      <div class="box" id="minebox">
+        <div class="line"><span class="label">Whose session is this</span><span class="faint" id="minewhy"></span></div>
+        <p class="faint" id="minesaid" hidden></p>
+        <div class="pair" id="mine"></div>
+        <div class="stack" id="mineconfirm" hidden>
+          <p class="title" id="mineask"></p>
+          <div class="pair">
+            <button type="button" class="btn primary" id="mineyes">Yes, it's mine</button>
+            <button type="button" class="btn ghost" id="mineno">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="log">
+      <div class="sechead"><h2>Activity log</h2><span class="count" id="logcount"></span></div>
+      <form class="searchrow" id="addnote" novalidate>
+        <label class="visually-hidden" for="note">Add a private note</label>
+        <input id="note" type="text" autocomplete="off" maxlength="2000" placeholder="Add a private note">
+        <button type="submit" class="btn">Add</button>
+      </form>
+      <div class="chips" id="logch" role="group" aria-label="Chapter" hidden></div>
+      <div class="chips" id="logf" role="group" aria-label="Show"></div>
+      <ul class="log" id="events"></ul>
+    </section>
+  </div>
+
+</main>
+
+<script type="module">
+  import { msg, call, get, post, here, personId, state, page, mpage, asked, askedForQueue } from '/desk-ui.js';
+  import { renderPerson } from '/desk-record.js';
+  import { renderPairs } from '/desk-trades.js';
+  import { renderWhoBrought } from '/desk-referrals.js';
+  import { renderMinutes } from '/desk-minutes.js';
+  import { renderFirstScreen, renderQueue } from '/desk-lists.js';
+  import { renderPrompts } from '/desk-prompts.js';
+  import { drawnBy, once, settled } from '/desk-after.js';
+  import '/desk-top.js';
+
+  once(document.getElementById('tscript'), 'click', async () => {
+    const button = document.getElementById('tscript');
+    button.disabled = true;
+    button.textContent = 'Asking…';
+    try {
+      const exported = await get('agent-script');
+      await navigator.clipboard.writeText(JSON.stringify(exported, null, 2));
+      button.textContent = 'Copied — commit it';
+    } catch (error) {
+      button.textContent = 'Export the script';
+      button.disabled = false;
+      msg('tmsg', error.message, 'bad');
+    }
+  });
+
+  for (const id of ['again', 'againrecord', 'todayagain', 'againprompts']) {
+    const button = document.getElementById(id);
+    once(button, 'click', async () => {
+      button.disabled = true;
+      try {
+        await draw();
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+
+  function renderDemoData(there) {
+    const button = document.getElementById('demodata');
+    if (!button) return;
+    button.textContent = there ? 'Delete demo data' : 'Add demo data';
+    once(button, 'click', async () => {
+      const deleting = button.textContent === 'Delete demo data';
+      if (deleting && !window.confirm('Delete every record marked DEMO? Real records are not '
+        + 'touched.')) return;
+      button.disabled = true;
+      button.textContent = deleting ? 'Deleting…' : 'Making…';
+      try {
+        if (deleting) {
+          const out = await post('demo-clear', {});
+          await settled(`Deleted ${out.orders} demo orders and ${out.cases} demo people.`);
+        } else {
+          const out = await post('demo-seed', {});
+          await settled(`Made ${out.made.length} demo records.`);
+        }
+      } catch (error) {
+        msg('tmsg', error.message, 'bad');
+        button.textContent = deleting ? 'Delete demo data' : 'Add demo data';
+      }
+      button.disabled = false;
+    });
+  }
+
+  once(document.getElementById('tlogout'), 'click', async () => {
+    try {
+      await call('/api/auth?action=signout', { method: 'POST' });
+    } catch (error) {
+      msg('tmsg', error.message, 'bad');
+      return;
+    }
+    window.location.replace('/desk');
+  });
+
+  async function draw() {
+    const promptsAsked = here.searchParams.get('view') === 'prompts';
+    const url = promptsAsked ? '/api/desk?action=prompts' : personId
+      ? `/api/desk?action=person&id=${encodeURIComponent(personId)}`
+        + (mpage ? `&mpage=${encodeURIComponent(mpage)}` : '')
+      : askedForQueue
+        ? `/api/desk?action=queue&state=${encodeURIComponent(state)}&page=${page}`
+          + (asked ? `&q=${encodeURIComponent(asked)}` : '')
+        : '/api/desk?action=today';
+    try {
+      const data = await call(url);
+      if (promptsAsked) {
+        renderPrompts(data);
+        document.getElementById('promptsview').hidden = false;
+      } else if (personId) {
+        renderPerson(data);
+        document.getElementById('record').hidden = false;
+      } else if (askedForQueue) {
+        renderQueue(data);
+        document.getElementById('queue').hidden = false;
+        renderPairs();
+        renderWhoBrought();
+        renderMinutes();
+      } else {
+        renderFirstScreen(data);
+        renderDemoData(Boolean(data.demoData));
+        document.getElementById('todayview').hidden = false;
+      }
+    } catch (error) {
+      if (error.status === 401) {
+        document.getElementById('signin').hidden = false;
+        document.getElementById('lgo').href =
+          `/api/auth?action=start&to=${encodeURIComponent(here.pathname + here.search)}`;
+        return;
+      }
+      msg('deskmsg', error.message, 'bad');
+    }
+  }
+
+  drawnBy(draw);
+
+  draw();
+</script>
+
+</body>
+</html>

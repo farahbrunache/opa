@@ -1,0 +1,74 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Check, sync settings, deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
+      - run: npm test
+        env:
+          CARD_ENCRYPTION_KEY: test-key-that-is-long-enough-to-pass-0123456789
+
+      - name: Is Infisical configured yet?
+        id: settings
+        env:
+          CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+          PROJECT_ID: ${{ secrets.INFISICAL_PROJECT_ID }}
+        run: |
+          if [ -n "$CLIENT_ID" ] && [ -n "$PROJECT_ID" ]; then
+            echo "ready=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sign in to Infisical
+        id: infisical
+        if: steps.settings.outputs.ready == 'yes'
+        env:
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+          INFISICAL_API_URL: ${{ secrets.INFISICAL_URL }}
+        run: |
+          set -euo pipefail
+          origin=$(printf '%s' "$INFISICAL_API_URL" | sed -E 's#^(https?://[^/]+).*#\1#')
+          [ -n "$origin" ] || { echo "::error title=INFISICAL_URL is not an address::It has to start with https:// and a host name."; exit 1; }
+          response=$(curl -sS --fail-with-body --max-time 30 \
+            -X POST "$origin/api/v1/auth/universal-auth/login" \
+            -H 'content-type: application/json' \
+            -d "$(jq -n --arg id "$INFISICAL_CLIENT_ID" --arg secret "$INFISICAL_CLIENT_SECRET" \
+                  '{clientId: $id, clientSecret: $secret}')") || {
+            echo "::error title=Infisical would not sign in::It answered: $response"
+            exit 1
+          }
+          token=$(printf '%s' "$response" | jq -r '.accessToken // empty')
+          if [ -z "$token" ]; then
+            echo "::error title=Infisical returned no token::It answered: $response"
+            exit 1
+          fi
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Put the settings on Render and deploy
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_NAME: one-percent-app
+          INFISICAL_TOKEN: ${{ steps.infisical.outputs.token }}
+          INFISICAL_PROJECT_ID: ${{ secrets.INFISICAL_PROJECT_ID }}
+          INFISICAL_API_URL: ${{ secrets.INFISICAL_URL }}
+        run: bash .github/scripts/deploy.sh

@@ -1,0 +1,61 @@
+services:
+  - type: web
+    name: one-percent-app
+    runtime: node
+    plan: starter
+    region: ohio
+    buildCommand: npm install --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /robots.txt
+    autoDeploy: false
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: CARD_ENCRYPTION_KEY
+        sync: false
+      - key: AUTH_PUBLISHABLE_KEY
+        sync: false
+      - key: AUTH_CLIENT_ID
+        sync: false
+      - key: AUTH_CLIENT_SECRET
+        sync: false
+      - key: ADMIN_ACCOUNT_IDS
+        sync: false
+      - key: RETELL_SECRET_KEY
+        sync: false
+      - key: RETELL_AGENT_ID
+        sync: false
+      - key: PAY_WISE
+        sync: false
+      - key: SWEEP_SECRET
+        sync: false
+      - key: DRAFT_MODEL_A_NAME
+        sync: false
+      - key: DRAFT_MODEL_A_URL
+        sync: false
+      - key: DRAFT_MODEL_A_KEY
+        sync: false
+      - key: DRAFT_MODEL_B_NAME
+        sync: false
+      - key: DRAFT_MODEL_B_URL
+        sync: false
+      - key: DRAFT_MODEL_B_KEY
+        sync: false
+      - key: DRAFT_MODEL_C_NAME
+        sync: false
+      - key: DRAFT_MODEL_C_URL
+        sync: false
+      - key: DRAFT_MODEL_C_KEY
+        sync: false
+      - key: RUNPOD_API_KEY
+        sync: false
+      - key: TAXONOMY_URL
+        sync: false
+      - key: TAXONOMY_TOKEN
+        sync: false
+      - key: DIRECTORY_SERVICE_URL
+        sync: false
+      - key: DIRECTORY_SERVICE_TOKEN
+        sync: false
+      - key: CONFIRM_TARGET_HOURS
+        sync: false

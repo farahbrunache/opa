@@ -1,0 +1,57 @@
+name: Demo video
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+      - name: Install ffmpeg
+        run: command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+      - name: Record the video
+        run: node scripts/demo-video.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: one-percent-demo-video
+          path: demo-video/
+          retention-days: 30
+      - name: Open a pull request with the new video
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          branch=chore/demo-video-refresh
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C "$branch"
+          cp demo-video/one-percent-demo.mp4 media/link-your-session.mp4
+          cp demo-video/one-percent-demo.jpg media/link-your-session.jpg
+          git add media/link-your-session.mp4 media/link-your-session.jpg
+          if git diff --cached --quiet; then
+            echo "The new video is the same as the one on main. No pull request."
+            exit 0
+          fi
+          git commit -m "chore: refresh the demo video on the claim page" \
+            -m "Recorded by the Demo video workflow, run ${{ github.run_id }}."
+          git push --force origin "$branch"
+          if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
+            gh pr create --base main --head "$branch" \
+              --title "chore: refresh the demo video on the claim page" \
+              --body "The video and its still on the claim page after a call, recorded again from the current screens by the Demo video workflow (run ${{ github.run_id }}). The same files are on that run's page as a download. Close and reopen this pull request to start the checks." \
+              || { echo "::error::GitHub refused the pull request. Turn on 'Allow GitHub Actions to create and approve pull requests' under Settings, Actions, General, then run this again. The video is on this run's page as a download."; exit 1; }
+          fi
+          gh pr merge "$branch" --auto --squash \
+            || echo "Auto-merge didn't turn on. Turn it on from the pull request."

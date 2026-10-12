@@ -8,13 +8,9 @@ process.env.DRAFT_MODEL_A_NAME = 'Invented Luna';
 process.env.DRAFT_MODEL_B_URL = 'https://invented-b.example';
 process.env.DRAFT_MODEL_B_KEY = 'invented-key-b';
 process.env.DRAFT_MODEL_B_NAME = 'Invented Sol';
-process.env.DRAFT_MODEL_A_IN_PER_MILLION = '0.10';
-process.env.DRAFT_MODEL_A_OUT_PER_MILLION = '0.50';
-delete process.env.DRAFT_MODEL_B_IN_PER_MILLION;
 const { signSession } = await import('../lib/crypto.js');
 const desk = (await import('../api/desk.js')).default;
 const costsApi = (await import('../api/costs.js')).default;
-const draft = await import('../lib/draft.js');
 const drafts = await import('../lib/desk-drafts.js');
 const pricing = await import('../lib/pricing.js');
 const { draftCost } = await import('../lib/costs.js');
@@ -52,15 +48,9 @@ check('the record picker sets the sheet alone', (await owner('model', { slot: 'B
 check('a kind names its family', drafts.familyOf('fields:brief') === 'fields' && drafts.familyOf(null) === 'sheet'
   && drafts.familyOf('gaps:c-1') === 'gaps');
 
-console.log('a draft priced by its tokens');
-check('slot A has prices', JSON.stringify(draft.tokenPrices('A')) === JSON.stringify({ inPerMillion: 0.1, outPerMillion: 0.5 }));
-check('slot B has none', draft.tokenPrices('B') === null);
-check('a million in and a million out on A costs sixty cents', Math.abs(draft.tokenCost('A', 1_000_000, 1_000_000) - 0.6) < 1e-9);
-check('without a token count there is no price', draft.tokenCost('A', null, 10) === null);
-check('a draft on A is priced by tokens before seconds',
-  Math.abs(draftCost({ slot: 'A', prompt_tokens: 2_000_000, completion_tokens: 0, seconds: 40 }, 0.01) - 0.2) < 1e-9);
-check('a draft on B falls back to seconds', Math.abs(draftCost({ slot: 'B', prompt_tokens: 10, completion_tokens: 10, seconds: 40 }, 0.01) - 0.4) < 1e-9);
-check('and with no per-second line it is not priced', draftCost({ slot: 'B', seconds: 40 }, null) === null);
+console.log('a draft priced by its seconds');
+check('a draft is priced at the per-second line', Math.abs(draftCost({ seconds: 40 }, 0.01) - 0.4) < 1e-9);
+check('and with no line it is not priced', draftCost({ seconds: 40 }, null) === null);
 
 console.log('what to charge');
 const [order] = await tagged`
@@ -70,12 +60,12 @@ const id = Number(order.id);
 const caseId = await db.caseForAccount('acct-price');
 await tagged`update orders set client_account_id = 'acct-price', case_id = ${caseId} where id = ${id}`;
 await tagged`insert into step_times (order_id, step, seconds, at) values (${id}, 'reply', 600, now() - interval '2 days'), (${id}, 'recommend', 1200, now() - interval '1 day')`;
-await tagged`insert into drafts (order_id, slot, model, job_id, kind, seconds, prompt_tokens, completion_tokens, created_at, finished_at)
-             values (${id}, 'A', 'Invented Luna', 'pj-1', 'reply', 30, 1_000_000, 1_000_000, now() - interval '2 days', now() - interval '2 days' + interval '30 seconds')`;
+await tagged`insert into drafts (order_id, slot, model, job_id, kind, seconds, created_at, finished_at)
+             values (${id}, 'A', 'Invented Luna', 'pj-1', 'reply', 30, now() - interval '2 days', now() - interval '2 days' + interval '30 seconds')`;
 await tagged`insert into step_times (order_id, step, seconds, at) values (${id}, 'reply', 180, now() - interval '2 days' + interval '4 minutes')`;
 await tagged`insert into held_sessions (case_id, rate, used_at) values (${caseId}, 'standard', now() - interval '1 day')`;
 delete process.env.OWNER_HOUR_DOLLARS_LOW;
-let price = await pricing.priceNow(null);
+let price = await pricing.priceNow(0.02);
 check('with no rate set there is no suggestion', price.rates === null && price.suggested === null, price);
 check('one working client, 33 minutes, sixty cents of AI, one session used',
   price.clients === 1 && Math.abs(price.minutesAClient - 33) < 1e-9 && Math.abs(price.aiAClient - 0.6) < 1e-9
@@ -89,14 +79,14 @@ process.env.PAYMENT_FEE_PERCENT = '0';
 process.env.SESSION_STANDARD_DOLLARS = '100';
 process.env.SESSION_ACCESS_DOLLARS = '25';
 process.env.ACCESS_SESSIONS_A_MONTH = '20';
-price = await pricing.priceNow(null);
+price = await pricing.priceNow(0.02);
 check('a session is worth its minutes at your rate plus the AI, rounded up to five',
   price.suggested.low === 60 && price.suggested.high === 115, price.suggested);
 check('the posted standard rate says what it leaves at each end',
   Math.abs(price.posted.standard.leaves.high - (100 - 0.6 - 55)) < 1e-9
   && Math.abs(price.posted.standard.leaves.low - (100 - 0.6 - 110)) < 1e-9, price.posted);
 process.env.PAYMENT_FEE_PERCENT = '10';
-price = await pricing.priceNow(null);
+price = await pricing.priceNow(0.02);
 check('a payment fee raises the price to cover it', price.suggested.low === 65, price.suggested);
 check('Money carries it', (await ask(costsApi, 'GET', '/api/costs?action=now')).out.price.suggested.low === 65);
 check('the rate is a pair, low then high', JSON.stringify(pricing.hourRates()) === JSON.stringify({ low: 100, high: 200 }));

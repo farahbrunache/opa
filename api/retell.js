@@ -8,12 +8,7 @@ import { HttpError, handle, readRaw, send } from '../lib/http.js';
 async function checkSignature(req, body) {
   const apiKey = process.env.RETELL_SECRET_KEY;
   if (!apiKey) {
-    throw new HttpError(
-      503,
-      'RETELL_SECRET_KEY is not set, so a delivery cannot be checked against anything. It is ' +
-        'the same API key the site starts calls with, and in Retell it is the one carrying the ' +
-        'webhook badge — another key will not verify a signature.',
-    );
+    throw new HttpError(503, 'RETELL_SECRET_KEY is not set, so a delivery cannot be checked.');
   }
 
   const signature = req.headers['x-retell-signature'];

@@ -66,8 +66,8 @@ check('nothing pasted is no link', profileIdFrom('  ') === null);
 {
   let refused = null;
   try { profileIdFrom('https://app.example.test/apps/lighthouse/1'); } catch (error) { refused = error; }
-  check('an address that is not a profile is refused and says what to copy',
-    refused && refused.status === 400 && /apps\/directory\/profile/.test(refused.message), refused?.message);
+  check('an address that is not a profile is refused and says where to copy one',
+    refused && refused.status === 400 && /profile page/.test(refused.message), refused?.message);
 }
 
 const id = await newOrder('dir-account-1');

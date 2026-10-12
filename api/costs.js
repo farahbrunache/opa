@@ -142,7 +142,9 @@ async function prices(req, res) {
   await ensureSchema();
   const wrong = await savePrices(await readJson(req));
   if (wrong) {
-    throw new HttpError(400, `${PRICE_WORDS[wrong]} ${wrong === 'wise' ? 'is one word with no spaces' : `needs a number above zero${wrong === 'aMonth' || wrong === 'cap' ? ', a whole one' : ''}`}, or nothing.`);
+    const need = wrong === 'wise' ? 'one word with no spaces'
+      : ['aMonth', 'cap'].includes(wrong) ? 'a whole number above zero' : 'a number above zero';
+    throw new HttpError(400, `${PRICE_WORDS[wrong]}: ${need}, or empty.`);
   }
   send(res, 200, { ok: true });
 }

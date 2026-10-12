@@ -39,9 +39,7 @@ export async function call(url, options) {
     response = await fetch(url, options);
   } catch (error) {
     const lost = new Error(
-      `No answer from the server for ${action}. The connection dropped before a reply came back: `
-        + 'the phone locked or switched apps, the signal dropped, or the app was restarting. '
-        + `The browser said "${error.message}". ${clockNow()}.`,
+      `No answer from the server for ${action}; the connection dropped. The browser said "${error.message}". ${clockNow()}.`,
     );
     lost.status = 0;
     throw lost;

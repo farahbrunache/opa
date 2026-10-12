@@ -317,15 +317,7 @@ const ACTIONS = {
 export default handle(['GET', 'POST'], async (req, res) => {
   const action = query(req).get('action');
   const run = ACTIONS[req.method]?.[action];
-  if (!run) {
-    const names = Object.keys(ACTIONS[req.method] || {}).join(', ');
-    throw new HttpError(
-      400,
-      `This screen asked for "${action || '(nothing)'}" and the desk has no such action on `
-        + `${req.method}. That is a bug in the page, not something you did. The ones it does `
-        + `have: ${names}.`,
-    );
-  }
+  if (!run) throw new HttpError(400, `The desk has no ${req.method} action "${action || ''}".`);
   await run(req, res);
 
   const params = query(req);

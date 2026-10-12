@@ -311,7 +311,7 @@ r = await run(desk, 'POST', '/api/desk?action=first-customer', { id: 1 });
 check('recording the outcome refuses without a session', r.statusCode === 401, r.payload);
 r = await run(desk, 'GET', '/api/desk?action=nonsense');
 check('an unknown desk action is refused', r.statusCode === 400, r.payload);
-check('and the refusal names the ones that exist', /queue/.test(r.payload?.error || ''), r.payload);
+check('and the refusal names the action it was asked for', /nonsense/.test(r.payload?.error || ''), r.payload);
 r = await run(desk, 'DELETE', '/api/desk');
 check('the desk rejects an unsupported method', r.statusCode === 405, r.payload);
 
@@ -367,7 +367,7 @@ const { sign } = await import('retell-sdk');
 delete process.env.RETELL_SECRET_KEY;
 r = await run(retell, 'POST', '/api/retell', { call: { call_id: 'c1' } });
 check('refuses when there is no key to check a signature against', r.statusCode === 503, r.payload);
-check('and says which key it means', /webhook badge/.test(r.payload?.error || ''), r.payload);
+check('and says which key it means', /RETELL_SECRET_KEY/.test(r.payload?.error || ''), r.payload);
 
 process.env.RETELL_SECRET_KEY = 'key_invented_for_this_test';
 

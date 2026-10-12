@@ -88,9 +88,8 @@ check('an empty answer is a failure', /nothing in it/.test((await draft.jobState
 stub([{ status: 401, body: { error: 'unauthorized' } }]);
 let denied = null;
 try { await draft.draft([{ role: 'user', content: 'x' }], 'A'); } catch (error) { denied = error; }
-check('a refusal names the address and the endpoint',
-  /api\.runpod\.ai\/v2\/aaa/.test(denied?.message || '') && /endpoint aaa/.test(denied?.message || ''),
-  denied?.message);
+check('a refusal names the endpoint and what RunPod said',
+  /endpoint aaa/.test(denied?.message || '') && /unauthorized/.test(denied?.message || ''), denied?.message);
 
 check('the server follows a job for ten minutes', draft.FOLLOW_BUDGET_MS === 10 * 60_000);
 

@@ -12,6 +12,7 @@ import {
   describeStatus,
 } from '../lib/orders.js';
 import { HttpError, handle, send } from '../lib/http.js';
+import { wiseHandle } from '../lib/sessions.js';
 
 export default handle('GET', async (req, res) => {
   const token = new URL(req.url, 'https://placeholder.invalid').searchParams.get('t');
@@ -74,7 +75,7 @@ export default handle('GET', async (req, res) => {
   }
 
   if (status === 'pending' && spec && !spec.needsCode) {
-    payload.payTo = process.env[spec.envKey] || null;
+    payload.payTo = await wiseHandle();
   }
 
   if (status === 'confirmed') {

@@ -17,16 +17,14 @@ jobs:
     steps:
       - name: Sweep
         env:
-          APP_URL: ${{ secrets.APP_URL }}
+          APP_URL: https://app.farahbrunache.com
           SWEEP_SECRET: ${{ secrets.SWEEP_SECRET }}
         run: |
           set -euo pipefail
-          [ -n "$APP_URL" ] || { echo "::error title=APP_URL is not set::Nothing to call."; exit 1; }
           [ -n "$SWEEP_SECRET" ] || { echo "::error title=SWEEP_SECRET is not set::The job cannot prove itself."; exit 1; }
 
-          origin=$(printf '%s' "$APP_URL" | sed -E 's#^(https?://[^/]+).*#\1#')
           answer=$(curl -sS --fail-with-body --max-time 120 \
-            -X POST "$origin/api/sweep?action=records" \
+            -X POST "$APP_URL/api/sweep?action=records" \
             -H "authorization: Bearer $SWEEP_SECRET") || {
             echo "::error title=The sweep was refused::It answered: $answer"
             exit 1

@@ -196,7 +196,7 @@ function range(low, high, format = money) {
 }
 
 const PRICE_FIELDS = [['hourlow', 'hourLow'], ['hourhigh', 'hourHigh'], ['pricestandard', 'standard'],
-  ['priceaccess', 'access'], ['accessamonth', 'aMonth']];
+  ['priceaccess', 'access'], ['accessamonth', 'aMonth'], ['confirmhours', 'confirmHours'], ['wisehandle', 'wise']];
 
 function renderPrice(price) {
   for (const [id, key] of PRICE_FIELDS) document.getElementById(id).value = price.set[key] || '';

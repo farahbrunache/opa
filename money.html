@@ -178,7 +178,7 @@
       <div class="sechead"><h2>What to charge</h2><span class="count" id="pricesaid"></span></div>
       <div class="stat3" id="pricefigures"></div>
       <div class="box">
-        <span class="cap">Your prices</span>
+        <span class="cap">Prices and payments</span>
         <form class="fields" id="prices" novalidate>
           <div class="grid2">
             <div class="field">
@@ -201,9 +201,17 @@
               <label for="accessamonth">Access sessions a month</label>
               <input id="accessamonth" type="number" inputmode="numeric" min="1" step="1" autocomplete="off">
             </div>
+            <div class="field">
+              <label for="confirmhours">Confirm within, hours</label>
+              <input id="confirmhours" type="number" inputmode="decimal" min="1" step="any" autocomplete="off" placeholder="12">
+            </div>
+          </div>
+          <div class="field">
+            <label for="wisehandle">Wise handle</label>
+            <input id="wisehandle" type="text" autocomplete="off" autocapitalize="none" spellcheck="false">
           </div>
           <div class="pair">
-            <button type="submit" class="btn primary" id="pricesave">Save prices</button>
+            <button type="submit" class="btn primary" id="pricesave">Save</button>
           </div>
         </form>
       </div>

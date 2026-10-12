@@ -2,7 +2,6 @@ import { Readable } from 'node:stream';
 import { check, db, failureCount, tagged } from './harness.mjs';
 
 process.env.ADMIN_ACCOUNT_IDS = 'admin-1';
-process.env.DIRECTORY_SERVICE_URL = 'https://skills.example.test/';
 process.env.DIRECTORY_SERVICE_TOKEN = 'onepercent.invented';
 const { signSession, decrypt } = await import('../lib/crypto.js');
 const desk = (await import('../api/desk.js')).default;
@@ -22,7 +21,7 @@ let asked = null;
 globalThis.fetch = async (url) => {
   asked = String(url);
   return new Response(JSON.stringify({ profile: { id: 'profile-1', jobTitle: 'Electrician',
-    sector: 'Construction', firstName: 'Invented', profileUrl: 'https://skills.example.test/p' } }));
+    sector: 'Construction', firstName: 'Invented', profileUrl: 'https://app.chargingthefuture.com/p' } }));
 };
 
 await tagged`insert into trades (id, title, sector_id, sector) values
@@ -44,7 +43,7 @@ console.log('linking and reading');
 check('something that isn\'t a profile link is refused',
   (await call('POST', '/api/desk?action=own-profile', { id, link: 'https://elsewhere.test/x y' })).status === 400);
 check('their profile links', (await call('POST', '/api/desk?action=own-profile',
-  { id, link: 'https://skills.example.test/apps/directory/profile/profile-1' })).status === 200);
+  { id, link: 'https://app.chargingthefuture.com/apps/directory/profile/profile-1' })).status === 200);
 const [stored] = await tagged`select directory_profile_encrypted from cases where id = ${caseId}`;
 check('and only its id is saved', decrypt(stored.directory_profile_encrypted) === 'profile-1');
 const person = (await call('GET', `/api/desk?action=person&id=${id}`)).out;

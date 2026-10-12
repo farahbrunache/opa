@@ -27,19 +27,13 @@ services:
         sync: false
       - key: RETELL_AGENT_ID
         sync: false
-      - key: PAY_WISE
-        sync: false
       - key: SWEEP_SECRET
         sync: false
       - key: RUNPOD_API_KEY
         sync: false
-      - key: TAXONOMY_URL
-        sync: false
       - key: TAXONOMY_TOKEN
-        sync: false
-      - key: DIRECTORY_SERVICE_URL
         sync: false
       - key: DIRECTORY_SERVICE_TOKEN
         sync: false
-      - key: CONFIRM_TARGET_HOURS
+      - key: PAY_WISE
         sync: false

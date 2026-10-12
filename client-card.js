@@ -105,7 +105,7 @@ export async function loadCard(sessions) {
   if (!data.rates) return;
 
   const access = data.access;
-  const lines = [`A limited number each month. ${access.left} left in ${access.monthName}. Subject to change.`,
+  const lines = [`A limited number each month. ${access.left} left in ${access.monthName}. Rate and availability subject to change.`,
     `Request one. If none are left, join the ${access.nextMonthName} list or buy at the standard rate.`];
   let accessButton;
   if (data.request && data.request.toPay) {
@@ -121,7 +121,7 @@ export async function loadCard(sessions) {
     accessButton = requestButton(said);
   }
   rates.append(rate('Access rate', data.rates.access, lines, accessButton));
-  rates.append(rate('Standard rate', data.rates.standard, ['Any time. Subject to change.'], go('Buy a session', '/buy?session=standard', true)));
+  rates.append(rate('Standard rate', data.rates.standard, ['Any time. Rate and availability subject to change.'], go('Buy a session', '/buy?session=standard', true)));
   fine.textContent = 'Same session at either rate. The rate changes the price, not the help. Nobody is asked why.';
 }
 

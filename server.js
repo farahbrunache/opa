@@ -1,5 +1,6 @@
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { actionOf, failure, requestRef } from './lib/http.js';
@@ -19,6 +20,7 @@ const PAGES = {
   '/privacy': ['privacy.html', 'text/html; charset=utf-8'],
   '/style.css': ['style.css', 'text/css; charset=utf-8'],
   '/client.css': ['client.css', 'text/css; charset=utf-8'],
+  '/fonts.css': ['fonts.css', 'text/css; charset=utf-8'],
   '/codefield.js': ['codefield.js', 'text/javascript; charset=utf-8'],
   '/problem.js': ['problem.js', 'text/javascript; charset=utf-8'],
   '/client-ui.js': ['client-ui.js', 'text/javascript; charset=utf-8'],
@@ -82,6 +84,10 @@ const ENDPOINTS = {
   '/api/client': () => import('./api/client.js'),
 };
 
+for (const name of readdirSync(join(HERE, 'fonts'))) {
+  if (name.endsWith('.woff2')) PAGES[`/fonts/${name}`] = [`fonts/${name}`, 'font/woff2'];
+}
+
 const MOVED = {
   '/payments': '/money',
   '/costs': '/money',
@@ -101,6 +107,7 @@ async function page(req, res, pathname) {
   const [file, type] = PAGES[pathname];
   const body = await readFile(join(HERE, file));
   res.setHeader('content-type', type);
+  if (pathname.startsWith('/fonts/')) res.setHeader('cache-control', 'public, max-age=31536000, immutable');
   if (NEVER_CACHE.has(pathname)) {
     res.setHeader('cache-control', 'no-store');
     res.setHeader('x-robots-tag', 'noindex, nofollow');

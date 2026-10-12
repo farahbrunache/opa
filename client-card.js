@@ -1,6 +1,7 @@
 import { call, showProblem } from '/problem.js';
 import { day, dollars, el } from '/client-ui.js';
 import { PREVIEW, readFrom } from '/client-source.js';
+import { sessionLine } from '/client-sessions.js';
 
 function money(amount) {
   return `$${dollars(amount)}`;
@@ -50,9 +51,25 @@ function go(label, href, ghost) {
 }
 
 let intake = [];
+let called = [];
+
+function drawCalls() {
+  const list = document.getElementById('callsdone');
+  list.textContent = '';
+  document.getElementById('callshead').hidden = !called.length;
+  for (const session of called) {
+    const row = el('div', null, 'sessmini');
+    row.append(el('b', session.reference, 'mono'), el('small', sessionLine(session)));
+    list.append(row);
+  }
+}
 
 export async function loadCard(sessions) {
-  if (sessions) intake = intakeItems(sessions);
+  if (sessions) {
+    intake = intakeItems(sessions);
+    called = sessions.filter((s) => s.hasCall);
+  }
+  drawCalls();
   const panel = document.getElementById('c-sessions');
   const where = document.getElementById('sessioncard');
   const rates = document.getElementById('rates');

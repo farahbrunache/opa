@@ -233,8 +233,8 @@ function drawApproved(data) {
   }
 
   document.getElementById('eyebrow').textContent = 'One Percent · Member';
-  document.getElementById('herolede').textContent = "You don't search alone here. Your organizer "
-    + 'finds the people, the customers and the next move, and brings them to you.';
+  document.getElementById('herolede').textContent = "You don't search alone here. You and your organizer "
+    + 'work out the people, the customers and the next move together, and you make it.';
   draw();
   drawIntroductions(data.introductions || []);
   drawBring(data.bring);

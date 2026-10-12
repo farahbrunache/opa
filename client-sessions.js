@@ -27,10 +27,7 @@ export function sessionCard(session, waiting) {
   return card;
 }
 
-export function drawFoot(foot, session, approved) {
+export function drawFoot(foot, session) {
   foot.querySelector('[data-ref]').textContent = session ? session.reference : '';
   foot.querySelector('[data-ref]').parentElement.hidden = !session;
-  const jump = foot.querySelector('[data-count]');
-  jump.textContent = 'Your card';
-  jump.parentElement.hidden = !approved;
 }

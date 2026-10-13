@@ -1494,6 +1494,8 @@ input.code-field::placeholder {
   color: var(--muted);
 }
 #record .stack { display: grid; gap: 0.75rem; }
+.inside #promptlist { display: grid; gap: var(--in-gap-xl); margin-top: var(--in-gap); }
+.inside #promptlist form { display: grid; gap: var(--in-gap-s); }
 #record .stack.tight { gap: 0.25rem; }
 #record .pair.tight { gap: 0.375rem; align-items: center; }
 #record .title { font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }

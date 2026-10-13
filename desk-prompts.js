@@ -4,8 +4,11 @@ export function renderPrompts(data) {
   const list = document.getElementById('promptlist');
   list.textContent = '';
   const prompts = data.prompts || [];
-  document.getElementById('promptcount').textContent =
-    `${prompts.filter((p) => p.text).length} of ${prompts.length} set`;
+  const count = () => {
+    document.getElementById('promptcount').textContent =
+      `${prompts.filter((p) => p.text).length} of ${prompts.length} set`;
+  };
+  count();
   for (const item of prompts) {
     const form = el('form', null, 'stack');
     form.noValidate = true;
@@ -30,7 +33,9 @@ export function renderPrompts(data) {
       save.disabled = true;
       try {
         await post('prompt', { name: item.name, text: box.value });
+        item.text = box.value;
         state.textContent = 'Saved';
+        count();
       } catch (error) {
         msg('pmsg', error.message, 'bad');
       } finally {

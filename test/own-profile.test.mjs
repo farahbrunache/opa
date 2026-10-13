@@ -20,7 +20,7 @@ async function call(method, url, payload) {
 let asked = null;
 globalThis.fetch = async (url) => {
   asked = String(url);
-  return new Response(JSON.stringify({ profile: { id: 'profile-1', jobTitle: 'Electrician',
+  return new Response(JSON.stringify({ profile: { id: 'profile-1', jobTitle: 'Electrician', skills: ['Wiring', 'Panel upgrades'],
     sector: 'Construction', firstName: 'Invented', profileUrl: 'https://app.chargingthefuture.com/p' } }));
 };
 
@@ -51,6 +51,7 @@ check('the record knows it is linked', person.ownProfileLinked === true && perso
 const read = (await call('GET', `/api/desk?action=own-profile&id=${id}`)).out;
 check('it reads the profile live, by its id', asked.endsWith('/api/directory/service/profiles/profile-1'), asked);
 check('and matches its job title to the trade list', read.tradeId === 'op-elec' && read.jobTitle === 'Electrician', read);
+check('and passes on the skills listed on the profile', JSON.stringify(read.skills) === JSON.stringify(['Wiring', 'Panel upgrades']), read.skills);
 const [before] = await tagged`select trade_id from orders where id = ${id}`;
 check('nothing from the profile is saved by reading it', before.trade_id === null, before);
 

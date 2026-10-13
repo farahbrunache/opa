@@ -170,11 +170,12 @@ function renderDrafting(person) {
   for (const slot of drafting.slots || []) {
     const model = drafting.models.find((m) => m.slot === slot);
     const chosen = Boolean(model) && (model.slot === drafting.chosen || drafting.models.length === 1);
-    const pick = el('button', model ? model.name + (chosen ? ' (in use)' : '') : `Slot ${slot}`, 'btn ghost small');
+    const pick = el('button', model ? model.name : `Slot ${slot}`, 'btn ghost small choice');
     pick.type = 'button';
     if (!model) offWhen(pick, true, 'Not set up');
-    pick.disabled = !model || chosen;
-    if (model) {
+    pick.setAttribute('aria-pressed', String(chosen));
+    pick.disabled = !model;
+    if (model && !chosen) {
       once(pick, 'click', async () => {
         try {
           await post('model', { slot: model.slot, for: 'sheet' });

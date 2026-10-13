@@ -177,7 +177,7 @@
       head.append(el('span', button.label, 'title'), el('span', button.inUse ? `Slot ${button.inUse}${fell}` : 'Off', 'muted'));
       const picks = el('div', null, 'pair');
       for (const slot of data.slots) {
-        const pick = el('button', slot.set ? `${slot.slot} · ${slot.name}` : `Slot ${slot.slot}`, 'btn ghost small');
+        const pick = el('button', slot.set ? `${slot.slot} · ${slot.name}` : `Slot ${slot.slot}`, 'btn ghost small choice');
         pick.type = 'button';
         if (!slot.set) offWhen(pick, true, 'Not set up');
         const on = slot.set && slot.slot === button.chosen;

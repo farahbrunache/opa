@@ -68,10 +68,9 @@ function field(labelText, control) {
   return wrap;
 }
 
-export function renderSkills(person, box, copyList) {
+function toggler(person) {
   const picked = person.skills || [];
   const pickedNames = new Set(picked.map((s) => s.name.toLowerCase()));
-
   const toggle = (entry) => {
     if (pickedNames.has(entry.key)) {
       const left = picked.filter((s) => s.name.toLowerCase() !== entry.key).map((s) => s.id);
@@ -83,6 +82,32 @@ export function renderSkills(person, box, copyList) {
     }
     return save(person, [...picked.map((s) => s.id), entry.ids[0]], `Added ${entry.name}.`);
   };
+  return { picked, pickedNames, toggle };
+}
+
+export function profileSkills(person, names) {
+  const wrap = el('div', null, 'profileskills');
+  wrap.append(el('h3', `On their Directory profile · ${names.length}`, 'groupname'));
+  const row = el('div', null, 'chips');
+  wrap.append(row);
+  const { pickedNames, toggle } = toggler(person);
+  loadList().then((skills) => {
+    const entries = new Map(byName(skills).map((entry) => [entry.key, entry]));
+    const missing = [];
+    for (const name of names) {
+      const entry = entries.get(String(name).toLowerCase());
+      if (entry) row.append(chip(entry.name, pickedNames.has(entry.key), () => toggle(entry)));
+      else missing.push(name);
+    }
+    if (missing.length) wrap.append(el('p', `Not in the copied Skills Taxonomy: ${missing.join(', ')}.`, 'faint'));
+  }).catch((error) => {
+    wrap.append(el('p', error.message, 'faint'));
+  });
+  return wrap;
+}
+
+export function renderSkills(person, box, copyList) {
+  const { picked, pickedNames, toggle } = toggler(person);
   const entryChip = (entry) => chip(entry.name, pickedNames.has(entry.key), () => toggle(entry));
 
   const mine = el('div', null, 'chips');

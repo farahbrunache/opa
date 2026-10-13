@@ -1,6 +1,6 @@
 import { el, get, link, msg, offWhen, post } from '/desk-ui.js';
 import { once, settled, wasBefore } from '/desk-after.js';
-import { forgetSkillList, renderSkills } from '/desk-skills.js';
+import { forgetSkillList, profileSkills, renderSkills } from '/desk-skills.js';
 
 function who(person) {
   return person.name || person.reference;
@@ -82,6 +82,7 @@ function ownProfile(person) {
   }
 
   get(`own-profile&id=${encodeURIComponent(person.id)}`).then((found) => {
+    if (found.skills?.length) wrap.after(profileSkills(person, found.skills));
     if (!found.jobTitle) {
       line.textContent = 'Their Directory profile has no job title on it.';
       return;

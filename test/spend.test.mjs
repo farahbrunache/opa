@@ -184,6 +184,9 @@ console.log('every charge');
   check('and so is a monthly bill',
     charges.items.some((i) => i.what === 'Hosting' && Math.abs(i.amount - 7) < 1e-9),
     charges.items);
+  check('every line says its kind',
+    charges.items.every((i) => (i.at ? ['call', 'drafting'] : ['month']).includes(i.kind)),
+    charges.items);
 }
 
 const failures = failureCount();

@@ -34,7 +34,7 @@ function week(w) {
 
 export function renderSpeed(speed) {
   const target = speed.targetHours;
-  document.getElementById('speedtarget').textContent = `Your target: ${target} hrs`;
+  for (const said of document.querySelectorAll('.speedtarget')) said.textContent = `Your target: ${target} hrs`;
   document.getElementById('speedmid').textContent = `${target} hrs`;
   document.getElementById('speedend').textContent = String(target * 2);
   document.getElementById('speedpast').textContent = `Past ${target} hrs`;

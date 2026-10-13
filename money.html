@@ -33,199 +33,231 @@
   <div id="msg" hidden></div>
 
   <div id="work" hidden>
-    <section class="sec" id="m-answer">
-      <div class="box">
-        <span class="cap">Are you underwater?</span>
-        <div class="headline" id="verdict30"><b></b><span></span></div>
-        <div class="ledger" id="ledger"></div>
-        <p class="note" id="camefrom"></p>
-      </div>
-    </section>
+    <div class="seg views" role="group" aria-label="Money views">
+      <button type="button" class="plain" data-view="now">Now</button>
+      <button type="button" class="plain" data-view="charges">Charges</button>
+      <button type="button" class="plain" data-view="history">History</button>
+      <button type="button" class="plain" data-view="setup">Setup</button>
+    </div>
 
-    <nav class="jump" aria-label="Money sections">
-      <a href="#m-speed">How fast you confirm</a>
-      <a href="#m-pay">Payments</a>
-      <a href="#m-week">Week by week</a>
-      <a href="#m-costs">Running costs</a>
-      <a href="#m-sessions">Per session</a>
-      <a href="#m-price">What to charge</a>
-    </nav>
-
-    <section class="sec" id="m-speed">
-      <div class="sechead"><h2>How fast you confirm</h2><span class="count" id="speedtarget"></span></div>
-      <div class="stat3" id="speedtiles"></div>
-      <div class="box" id="speedbox">
-        <div class="axis" aria-hidden="true"><span></span><span class="ticks"><span>0</span><span id="speedmid"></span><span id="speedend"></span></span><span></span></div>
-        <ul class="speed" id="speedrows"></ul>
-      </div>
-      <div class="tablewrap" id="speedweekswrap">
-        <table class="wk">
-          <thead>
-            <tr><th scope="col">Week</th><th scope="col">Confirmed</th><th scope="col">Typical</th>
-              <th scope="col" id="speedpast"></th></tr>
-          </thead>
-          <tbody id="speedweeks"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="sec" id="m-pay">
-      <div class="sechead"><h2>Payments</h2><span class="count" id="waitingcount"></span></div>
-      <div class="stat3" id="counts"></div>
-      <p class="note" id="accessline"></p>
-      <a class="olink" id="ontoday" href="/desk" hidden></a>
-      <form class="searchrow" id="search" novalidate>
-        <label class="visually-hidden" for="q">Find a reference</label>
-        <input class="code-field" id="q" type="search" inputmode="latin" autocapitalize="characters"
-               autocomplete="off" placeholder="The entire reference">
-        <button type="submit" class="btn">Find</button>
-        <button type="button" class="btn ghost" id="clear">Show all</button>
-      </form>
-      <ul class="list" id="history" aria-live="polite"></ul>
-      <div class="line">
-        <span class="note" id="hcount"></span>
-        <div class="pair" id="pager" hidden>
-          <button type="button" class="btn ghost small" id="prev">Newer</button>
-          <button type="button" class="btn ghost small" id="next">Older</button>
+    <div class="mview" data-view="now" hidden>
+      <section class="sec">
+        <div class="box">
+          <span class="cap">Are you underwater?</span>
+          <div class="headline" id="verdict30"><b></b><span></span></div>
+          <div class="ledger" id="ledger"></div>
+          <p class="note" id="camefrom"></p>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="sec" id="m-week">
-      <div class="sechead"><h2>Week by week</h2><span class="count" id="pattern"></span></div>
-      <div class="tablewrap">
-        <table class="wk">
-          <thead>
-            <tr><th scope="col">Week</th><th scope="col">In</th><th scope="col">Out</th>
-              <th scope="col">Left</th></tr>
-          </thead>
-          <tbody id="weeks"></tbody>
-        </table>
-      </div>
-    </section>
+      <section class="sec" id="gappanel" hidden>
+        <div class="sechead"><h2>What would close it</h2></div>
+        <ul class="list" id="gap"></ul>
+      </section>
 
-    <section class="sec" id="gappanel" hidden>
-      <div class="sechead"><h2>What would close it</h2></div>
-      <ul class="list" id="gap"></ul>
-    </section>
+      <section class="sec">
+        <div class="sechead"><h2>Payments</h2><span class="count" id="waitingcount"></span></div>
+        <p class="note" id="accessline"></p>
+        <a class="olink" id="ontoday" href="/desk" hidden></a>
+        <a class="olink" href="/money?view=history" data-to="history">Every payment · History →</a>
+      </section>
 
-    <section class="sec">
-      <div class="sechead"><h2>The last seven days</h2><span class="count" id="window"></span></div>
-      <div class="box"><div class="ledger" id="windowrows"></div></div>
-    </section>
+      <section class="sec">
+        <div class="sechead"><h2>How fast you confirm</h2><span class="count speedtarget"></span></div>
+        <div class="stat3" id="speedtiles"></div>
+      </section>
 
-    <section class="sec">
-      <div class="sechead"><h2>Every charge in 30 days</h2><span class="count" id="chargetotal"></span></div>
-      <ul class="list" id="charges"></ul>
-    </section>
+      <section class="sec">
+        <div class="sechead"><h2>The last seven days</h2><span class="count" id="window"></span></div>
+        <div class="box"><div class="ledger" id="windowrows"></div></div>
+      </section>
+    </div>
 
-    <section class="sec" id="m-costs">
-      <div class="sechead"><h2>Running costs</h2><span class="count" id="monthly"></span></div>
-      <ul class="list" id="lines"></ul>
-      <div class="box">
-        <span class="cap" id="lineformtitle">Add a cost</span>
-        <form class="fields" id="addline" novalidate>
-          <div class="grid2">
-            <div class="field">
-              <label for="linename">What is it</label>
-              <input id="linename" type="text" autocomplete="off" maxlength="120" placeholder="Render">
-            </div>
-            <div class="field">
-              <label for="lineamount">Dollars</label>
-              <input id="lineamount" type="number" inputmode="decimal" min="0" step="any" autocomplete="off">
-            </div>
-            <div class="field">
-              <label for="lineevery">Charged</label>
-              <select id="lineevery">
-                <option value="month">Every month</option>
-                <option value="draft-second">Per second of drafting</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="lineshare">Your share, of 100</label>
-              <input id="lineshare" type="number" inputmode="numeric" min="1" max="100" step="1"
-                     value="100" autocomplete="off">
-            </div>
+    <div class="mview" data-view="charges" hidden>
+      <section class="sec">
+        <div class="sechead"><h2>Every charge in 30 days</h2><span class="count" id="chargetotal"></span></div>
+        <label class="visually-hidden" for="chargeq">Find a charge</label>
+        <input id="chargeq" type="search" autocomplete="off" placeholder="Reference, day or kind">
+        <div class="filters" id="chargekinds" role="group" aria-label="Kinds of charge">
+          <button type="button" class="fchip" data-kind="all">All</button>
+          <button type="button" class="fchip" data-kind="drafting">Drafting</button>
+          <button type="button" class="fchip" data-kind="call">Calls</button>
+          <button type="button" class="fchip" data-kind="month">Monthly bills</button>
+          <button type="button" class="fchip" data-kind="yours">Yours</button>
+        </div>
+        <label class="tick"><input type="checkbox" id="chargeeach"> Show each $0.000 line</label>
+        <div id="charges"></div>
+        <div class="line">
+          <span class="note" id="chargecount"></span>
+          <div class="pair" id="chargepager" hidden>
+            <button type="button" class="btn ghost small" id="chargeprev">Newer</button>
+            <button type="button" class="btn ghost small" id="chargenext">Older</button>
           </div>
-          <div class="field">
-            <label for="lineref">Client reference, empty for the product</label>
-            <input class="code-field" id="lineref" type="text" inputmode="latin"
-                   autocapitalize="characters" autocomplete="off">
-          </div>
-          <div class="pair">
-            <button type="submit" class="btn primary" id="linesave">Add it</button>
-            <button type="button" class="btn ghost" id="linecancel" hidden>Cancel</button>
-          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="mview" data-view="history" hidden>
+      <section class="sec">
+        <div class="sechead"><h2>Every payment</h2></div>
+        <div class="stat3" id="counts"></div>
+        <form class="searchrow" id="search" novalidate>
+          <label class="visually-hidden" for="q">Find a reference</label>
+          <input class="code-field" id="q" type="search" inputmode="latin" autocapitalize="characters"
+                 autocomplete="off" placeholder="The entire reference">
+          <button type="submit" class="btn">Find</button>
+          <button type="button" class="btn ghost" id="clear">Show all</button>
         </form>
-      </div>
-      <div class="item">
-        <div class="line"><span class="title">What drafting actually billed</span></div>
-        <span class="muted" id="billsays"></span>
-        <button type="button" class="btn ghost" id="pullbill">Read the bill</button>
-      </div>
-    </section>
-
-    <section class="sec" id="m-sessions">
-      <div class="sechead"><h2>Per session</h2><span class="count" id="verdict"></span></div>
-      <p class="note" id="verdictwhy"></p>
-      <div class="stat3" id="figures"></div>
-      <ul class="list" id="orders"></ul>
-    </section>
-
-    <section class="sec" id="m-price">
-      <div class="sechead"><h2>What to charge</h2><span class="count" id="pricesaid"></span></div>
-      <div class="stat3" id="pricefigures"></div>
-      <div class="box">
-        <span class="cap">Prices and payments</span>
-        <form class="fields" id="prices" novalidate>
-          <div class="grid2">
-            <div class="field">
-              <label for="hourlow">Your rate an hour, low</label>
-              <input id="hourlow" type="number" inputmode="decimal" min="0" step="any" autocomplete="off">
-            </div>
-            <div class="field">
-              <label for="hourhigh">Your rate an hour, high</label>
-              <input id="hourhigh" type="number" inputmode="decimal" min="0" step="any" autocomplete="off">
-            </div>
-            <div class="field">
-              <label for="pricestandard">Standard session</label>
-              <input id="pricestandard" type="number" inputmode="decimal" min="0" step="any" autocomplete="off">
-            </div>
-            <div class="field">
-              <label for="priceaccess">Access session</label>
-              <input id="priceaccess" type="number" inputmode="decimal" min="0" step="any" autocomplete="off">
-            </div>
-            <div class="field">
-              <label for="accessamonth">Access sessions a month</label>
-              <input id="accessamonth" type="number" inputmode="numeric" min="1" step="1" autocomplete="off">
-            </div>
-            <div class="field">
-              <label for="confirmhours">Confirm within, hours</label>
-              <input id="confirmhours" type="number" inputmode="decimal" min="1" step="any" autocomplete="off" placeholder="12">
-            </div>
-            <div class="field">
-              <label for="sessioncap">Session cap, minutes</label>
-              <input id="sessioncap" type="number" inputmode="numeric" min="1" step="1" autocomplete="off">
-            </div>
+        <ul class="list" id="history" aria-live="polite"></ul>
+        <div class="line">
+          <span class="note" id="hcount"></span>
+          <div class="pair" id="pager" hidden>
+            <button type="button" class="btn ghost small" id="prev">Newer</button>
+            <button type="button" class="btn ghost small" id="next">Older</button>
           </div>
-          <div class="field">
-            <label for="wisehandle">Wise handle</label>
-            <input id="wisehandle" type="text" autocomplete="off" autocapitalize="none" spellcheck="false">
-          </div>
-          <div class="pair">
-            <button type="submit" class="btn primary" id="pricesave">Save</button>
-          </div>
-        </form>
-      </div>
-      <ul class="list" id="pricerates"></ul>
-      <div class="sechead"><h3>Per button</h3><span class="count" id="buttondays"></span></div>
-      <ul class="list" id="pricebuttons"></ul>
-    </section>
+        </div>
+      </section>
 
-    <section class="sec">
-      <div class="sechead"><h2>What is not counted</h2></div>
-      <ul class="list" id="unknown"></ul>
-    </section>
+      <section class="sec">
+        <div class="sechead"><h2>Week by week</h2><span class="count" id="pattern"></span></div>
+        <div class="tablewrap">
+          <table class="wk">
+            <thead>
+              <tr><th scope="col">Week</th><th scope="col">In</th><th scope="col">Out</th>
+                <th scope="col">Left</th></tr>
+            </thead>
+            <tbody id="weeks"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="sec" id="m-speed">
+        <div class="sechead"><h2>How fast you confirm</h2><span class="count speedtarget"></span></div>
+        <div class="box" id="speedbox">
+          <div class="axis" aria-hidden="true"><span></span><span class="ticks"><span>0</span><span id="speedmid"></span><span id="speedend"></span></span><span></span></div>
+          <ul class="speed" id="speedrows"></ul>
+        </div>
+        <div class="tablewrap" id="speedweekswrap">
+          <table class="wk">
+            <thead>
+              <tr><th scope="col">Week</th><th scope="col">Confirmed</th><th scope="col">Typical</th>
+                <th scope="col" id="speedpast"></th></tr>
+            </thead>
+            <tbody id="speedweeks"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="sec">
+        <div class="sechead"><h2>Per session</h2><span class="count" id="verdict"></span></div>
+        <p class="note" id="verdictwhy"></p>
+        <div class="stat3" id="figures"></div>
+        <ul class="list" id="orders"></ul>
+      </section>
+    </div>
+
+    <div class="mview" data-view="setup" hidden>
+      <section class="sec">
+        <div class="sechead"><h2>What to charge</h2><span class="count" id="pricesaid"></span></div>
+        <div class="stat3" id="pricefigures"></div>
+        <div class="box">
+          <span class="cap">Prices and payments</span>
+          <form class="fields" id="prices" novalidate>
+            <div class="grid2">
+              <div class="field">
+                <label for="hourlow">Your rate an hour, low</label>
+                <input id="hourlow" type="number" inputmode="decimal" min="0" step="any" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="hourhigh">Your rate an hour, high</label>
+                <input id="hourhigh" type="number" inputmode="decimal" min="0" step="any" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="pricestandard">Standard session</label>
+                <input id="pricestandard" type="number" inputmode="decimal" min="0" step="any" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="priceaccess">Access session</label>
+                <input id="priceaccess" type="number" inputmode="decimal" min="0" step="any" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="accessamonth">Access sessions a month</label>
+                <input id="accessamonth" type="number" inputmode="numeric" min="1" step="1" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="confirmhours">Confirm within, hours</label>
+                <input id="confirmhours" type="number" inputmode="decimal" min="1" step="any" autocomplete="off" placeholder="12">
+              </div>
+              <div class="field">
+                <label for="sessioncap">Session cap, minutes</label>
+                <input id="sessioncap" type="number" inputmode="numeric" min="1" step="1" autocomplete="off">
+              </div>
+            </div>
+            <div class="field">
+              <label for="wisehandle">Wise handle</label>
+              <input id="wisehandle" type="text" autocomplete="off" autocapitalize="none" spellcheck="false">
+            </div>
+            <div class="pair">
+              <button type="submit" class="btn primary" id="pricesave">Save</button>
+            </div>
+          </form>
+        </div>
+        <ul class="list" id="pricerates"></ul>
+        <div class="sechead"><h3>Per button</h3><span class="count" id="buttondays"></span></div>
+        <ul class="list" id="pricebuttons"></ul>
+      </section>
+
+      <section class="sec">
+        <div class="sechead"><h2>Running costs</h2><span class="count" id="monthly"></span></div>
+        <ul class="list" id="lines"></ul>
+        <div class="box">
+          <span class="cap" id="lineformtitle">Add a cost</span>
+          <form class="fields" id="addline" novalidate>
+            <div class="grid2">
+              <div class="field">
+                <label for="linename">What is it</label>
+                <input id="linename" type="text" autocomplete="off" maxlength="120" placeholder="Render">
+              </div>
+              <div class="field">
+                <label for="lineamount">Dollars</label>
+                <input id="lineamount" type="number" inputmode="decimal" min="0" step="any" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="lineevery">Charged</label>
+                <select id="lineevery">
+                  <option value="month">Every month</option>
+                  <option value="draft-second">Per second of drafting</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="lineshare">Your share, of 100</label>
+                <input id="lineshare" type="number" inputmode="numeric" min="1" max="100" step="1"
+                       value="100" autocomplete="off">
+              </div>
+            </div>
+            <div class="field">
+              <label for="lineref">Client reference, empty for the product</label>
+              <input class="code-field" id="lineref" type="text" inputmode="latin"
+                     autocapitalize="characters" autocomplete="off">
+            </div>
+            <div class="pair">
+              <button type="submit" class="btn primary" id="linesave">Add it</button>
+              <button type="button" class="btn ghost" id="linecancel" hidden>Cancel</button>
+            </div>
+          </form>
+        </div>
+        <div class="item">
+          <div class="line"><span class="title">What drafting actually billed</span></div>
+          <span class="muted" id="billsays"></span>
+          <button type="button" class="btn ghost" id="pullbill">Read the bill</button>
+        </div>
+      </section>
+
+      <section class="sec">
+        <div class="sechead"><h2>What is not counted</h2></div>
+        <ul class="list" id="unknown"></ul>
+      </section>
+    </div>
   </div>
 
 </main>
@@ -235,8 +267,8 @@
   import { codeFields } from '/codefield.js';
   import { loadPayments } from '/money-payments.js';
   import { renderCosts } from '/money-costs.js';
+  import { renderCharges } from '/money-charges.js';
   import '/desk-top.js';
-  import { watchJumps } from '/desk-jump.js';
 
   codeFields(['q', 'lineref']);
 
@@ -244,14 +276,44 @@
     weekday: 'long', month: 'long', day: 'numeric',
   });
 
+  const VIEWS = ['now', 'charges', 'history', 'setup'];
+
+  function show(view) {
+    const current = VIEWS.includes(view) ? view : 'now';
+    for (const pane of document.querySelectorAll('.mview')) pane.hidden = pane.dataset.view !== current;
+    for (const button of document.querySelectorAll('.views button')) {
+      const on = button.dataset.view === current;
+      button.setAttribute('aria-pressed', String(on));
+      button.classList.toggle('choice', on);
+    }
+    const address = current === 'now' ? '/money' : `/money?view=${current}`;
+    if (location.pathname + location.search !== address) history.replaceState(null, '', address);
+  }
+
+  function go(view) {
+    show(view);
+    window.scrollTo(0, 0);
+  }
+
+  document.querySelector('.views').addEventListener('click', (event) => {
+    const button = event.target.closest('button');
+    if (button && button.getAttribute('aria-pressed') !== 'true') go(button.dataset.view);
+  });
+  for (const link of document.querySelectorAll('[data-to]')) {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      go(link.dataset.to);
+    });
+  }
+
   async function load() {
     try {
       const costs = await call('/api/costs?action=now');
       renderCosts(costs);
+      renderCharges(costs.charges);
       await loadPayments();
       document.getElementById('signin').hidden = true;
       document.getElementById('work').hidden = false;
-      watchJumps();
     } catch (error) {
       if (error.status === 401 || /^sign in with skills economy first/i.test(error.message)) {
         document.getElementById('work').hidden = true;
@@ -269,7 +331,9 @@
     history.replaceState(null, '', '/money');
     document.getElementById('signin').hidden = false;
     msg('lmsg', problem, 'bad');
+    show('now');
   } else {
+    show(new URLSearchParams(location.search).get('view'));
     load();
   }
 </script>

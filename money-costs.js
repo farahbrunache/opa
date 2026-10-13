@@ -8,7 +8,7 @@ function post(action, body) {
   });
 }
 
-function exact(value) {
+export function exact(value) {
   return `$${Number(value).toFixed(3)}`;
 }
 
@@ -95,27 +95,6 @@ function renderSeven(data) {
     + (w.billRead ? ' off the bill' : ` from ${w.projectSeconds}s at the rate`)
     + `, ${w.fixedShare === null ? 'no monthly bills listed' : `${exact(w.fixedShare)} of monthly bills`}`);
   if (w.demoSessions) ledgerLine(rows, 'Demo sessions', String(w.demoSessions), 'counted against the project');
-}
-
-function renderCharges(charges) {
-  const box = document.getElementById('charges');
-  box.textContent = '';
-  document.getElementById('chargetotal').textContent = `Total ${exact(charges.total)}`;
-  if (!charges.items.length) {
-    box.append(el('li', 'Nothing charged in the last 30 days.', 'empty'));
-    return;
-  }
-  for (const item of charges.items) {
-    const row = el('li', null, 'item');
-    const whose = item.reference ? `${item.reference}${item.project ? ' · yours' : ''}` : 'the project';
-    const when = item.at
-      ? new Date(item.at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-      : 'every month';
-    const head = el('div', null, 'line');
-    head.append(el('span', item.what, 'title'), el('b', item.amount === null ? 'not counted' : exact(item.amount)));
-    row.append(head, el('span', `${when} · ${whose}`, 'muted'), el('span', item.how, 'faint'));
-    box.append(row);
-  }
 }
 
 let editing = null;
@@ -309,7 +288,6 @@ export function renderCosts(data) {
   renderWeeks(data);
   renderGap(data);
   renderSeven(data);
-  renderCharges(data.charges);
   renderLines(data);
   renderSessions(data);
   renderPrice(data.price);

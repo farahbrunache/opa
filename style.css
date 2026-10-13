@@ -1371,6 +1371,27 @@ input.code-field::placeholder {
 }
 .inside .jump a.on { border-color: var(--gold); color: var(--ink); }
 
+.inside .seg.views { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 0.75rem; }
+.inside .seg.views button { padding-inline: 2px; }
+.inside a.olink { display: flex; align-items: center; color: var(--gold); text-decoration: none; }
+.inside a.olink[hidden] { display: none; }
+#chargeq { margin-top: 0.875rem; }
+.inside .cday {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.inside .cday b { font-size: 0.85rem; letter-spacing: 0; text-transform: none; color: var(--ink); }
+.inside .cday + .list { margin-top: 0.5rem; }
+.inside .item.fold { border-style: dashed; }
+
 .inside .totop {
   position: fixed;
   right: 16px;

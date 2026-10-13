@@ -64,6 +64,7 @@ const PAGES = {
   '/money-payments.js': ['money-payments.js', 'text/javascript; charset=utf-8'],
   '/money-speed.js': ['money-speed.js', 'text/javascript; charset=utf-8'],
   '/money-costs.js': ['money-costs.js', 'text/javascript; charset=utf-8'],
+  '/money-charges.js': ['money-charges.js', 'text/javascript; charset=utf-8'],
   '/robots.txt': ['robots.txt', 'text/plain; charset=utf-8'],
   '/media/link-your-session.mp4': ['media/link-your-session.mp4', 'video/mp4'],
   '/media/link-your-session.jpg': ['media/link-your-session.jpg', 'image/jpeg'],

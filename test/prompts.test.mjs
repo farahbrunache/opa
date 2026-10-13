@@ -54,6 +54,11 @@ check('the sheet prompt carries the rules and the shared part',
 check('the desk gets the rules as a list',
   JSON.stringify((await sheetAids()).rules) === JSON.stringify(['One rule.', 'Two rule.']));
 
+await ask('POST', 'prompt', { name: 'roadmap', text: 'Roadmap {changes}.\n{rules}\n{shared}' });
+check('any prompt can carry the rules and the shared part',
+  (await prompt('roadmap', { changes: 3 })) === 'Roadmap 3.\n- One rule.\n- Two rule.\nShared bit.', await prompt('roadmap', { changes: 3 }));
+check('a prompt without them does not need them', (await prompt('gaps', { gaps: 2 })) === 'Find 2 things. Keep {other}.');
+
 const after = await ask('GET', 'prompts');
 check('a saved prompt reads back', after.out.prompts.find((p) => p.name === 'rules')?.text === 'One rule.\n\nTwo rule.');
 

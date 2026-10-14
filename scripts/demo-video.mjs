@@ -86,7 +86,7 @@ const threadPayload = () => ({
 const SIGN_IN_CARD = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="/fonts.css">
 <link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/client.css">
 <style>
   body.client { min-height: 844px; display: flex; align-items: center; background: var(--c-paper); }

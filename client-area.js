@@ -201,7 +201,7 @@ function drawApproved(data) {
   const draw = () => {
     const letter = letterOf(data);
     panel.hidden = !letter;
-    if (letter) letterPanel(panel, letter, false);
+    if (letter) letterPanel(panel, letter, true);
     const steps = (data.roadmap || []).filter((i) => i.fromCall);
     const done = steps.filter((i) => i.group === 'done').length;
     const n = steps.length;

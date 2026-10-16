@@ -36,7 +36,7 @@ function renderOrders(person) {
     card.append(el('span', order.reference, 'cn'));
     card.append(el('b', order.calledAt ? weekday(order.calledAt) : 'No call came back'));
     const said = [order.decision ? (order.decision === 'go' ? 'Go' : 'No-go') : null,
-      order.recommendedAt ? `Next steps sent ${weekday(order.recommendedAt)}` : 'Next steps not written'];
+      order.recommendedAt ? `Recommendations sent ${weekday(order.recommendedAt)}` : 'Recommendations not written'];
     card.append(el('small', said.filter(Boolean).join(' · ')));
     box.append(card);
   }

@@ -147,7 +147,7 @@ function renderRecommendations(person) {
     }
     try {
       await post('recommend', { id: person.id, body: input.value });
-      await settled('Next steps sent.');
+      await settled('Recommendations sent.');
     } catch (error) {
       msg('rmsg', error.message, 'bad');
     }

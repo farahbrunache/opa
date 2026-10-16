@@ -135,8 +135,8 @@ export function owed(person) {
       next: 'Write the strategy', go: '#strategy', button: 'Strategy' });
   }
   if (!person.recommendedAt) {
-    out.push({ what: 'Write their next steps.', yours: true,
-      next: 'Write their next steps', go: '#steps', button: 'Next steps' });
+    out.push({ what: 'Write recommendations.', yours: true,
+      next: 'Write recommendations', go: '#steps', button: 'Recommendations' });
   }
   return out;
 }

@@ -138,7 +138,7 @@ async function recommend(req, res) {
   const body = await readJson(req);
   const id = orderId(body.id);
   const text = String(body.body || '').trim().slice(0, 8000);
-  if (!text) throw new HttpError(400, 'Empty next steps are not a recommendation.');
+  if (!text) throw new HttpError(400, 'Empty recommendations can\'t be sent.');
   if (await recommendInChapter(id, text)) {
     await markUsed(id, null);
     await sql()`update orders set recommendation_done_at = coalesce(recommendation_done_at, now()) where id = ${id}`;

@@ -200,14 +200,16 @@ function drawApproved(data) {
 
   const draw = () => {
     const letter = letterOf(data);
-    panel.hidden = !letter;
-    if (letter) letterPanel(panel, letter, false);
+    const parts = letter ? sheetSteps(letter.recommendations) : null;
+    panel.hidden = !parts || (!parts.intro && !parts.outro);
+    if (!panel.hidden) letterPanel(panel, letter, false);
     const steps = (data.roadmap || []).filter((i) => i.fromCall);
     const done = steps.filter((i) => i.group === 'done').length;
     const n = steps.length;
     progress.textContent = n
       ? `${n === 1 ? 'Its one step is' : `Its ${n} steps are`} on your roadmap above: ${done} done, ${n - done} to do. Tap a circle when one is done. Farah sees it right away.`
-      : 'What it says to do is on your roadmap above.';
+      : '';
+    progress.hidden = !n;
     document.getElementById('heroline').textContent = headline(data, data.roadmap || []);
     drawRoadmap(data, tick);
   };

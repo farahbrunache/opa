@@ -40,7 +40,7 @@ console.log('reading a sheet as steps');
   check('numbered items are steps, sub-bullets stay with theirs', parts.steps.length === 2
     && parts.steps[0].includes('https://example.com/a'), parts);
   check('the text around them is kept apart', parts.intro === 'Here it is.' && parts.outro === 'Closing line.', parts);
-  check('a sheet with no numbers is one step', sheetSteps('Just do this. Then that.').steps.length === 1);
+  check('prose with no numbers is all intro and no steps', (() => { const p = sheetSteps('Just do this. Then that.'); return p.steps.length === 0 && p.intro === 'Just do this. Then that.'; })());
   check('the first sentence ends at a period, not inside an address',
     firstSentence('Go to https://example.com/x. Then rest.')[0] === 'Go to https://example.com/x.');
 }
@@ -92,11 +92,21 @@ console.log('two kinds of owner line');
     thread.out.messages[0]);
 }
 
-console.log('ticking off steps');
+console.log('ticking off activities');
 {
+  const before = (await as('acct-cp-go', 'GET', 'mine')).out;
+  check('numbered recommendations put nothing on their roadmap', before.roadmap.length === 0, before.roadmap);
+  check('a go session tells the page its next move is the roadmap', before.sessions[0].next === 'roadmap', before.sessions[0]);
+  const theirs = (await as('acct-cp-other', 'GET', 'mine')).out;
+  check('a no-go session tells the page its next move is another call',
+    theirs.sessions[0].next === 'call' && !/no-go/.test(JSON.stringify(theirs)), theirs.sessions[0]);
+  for (const n of [1, 2, 3, 4]) {
+    await tagged`insert into activities (case_id, position, title_encrypted, state, source, shown_at)
+                 values (${go.caseId}, ${n}, ${encrypt(`Invented activity ${n}`)}, 'todo', 'you', now())`;
+  }
   const mine = (await as('acct-cp-go', 'GET', 'mine')).out;
-  const steps = mine.roadmap.filter((a) => a.fromCall);
-  check('each numbered step is on their roadmap, to do', steps.length === 4 && steps.every((a) => a.group === 'todo'), mine.roadmap);
+  const steps = [...mine.roadmap].sort((a, b) => a.id - b.id);
+  check('activities added on the desk are on their roadmap, to do', steps.length === 4 && steps.every((a) => a.group === 'todo'), mine.roadmap);
   const refused = await as('acct-cp-other', 'POST', 'activity', { activity: steps[0].id, done: true });
   check('a step the account doesn\'t own is refused', refused.status === 404, refused.out);
   const past = await as('acct-cp-go', 'POST', 'activity', { activity: 999999, done: true });
@@ -169,10 +179,11 @@ console.log('your roadmap');
 
 console.log('demo rows');
 {
+  const realBefore = await tagged`select count(*)::int as n from activities where case_id = ${go.caseId}`;
   check('demo data seeds', (await owner('POST', 'demo-seed')).status === 201);
   const seeded = await tagged`select count(*)::int as n from activities a join cases k on k.id = a.case_id
-                              where k.is_demo and a.step_order_id is not null and a.state = 'done'`;
-  check('with two ticked steps', seeded[0].n === 2, seeded);
+                              where k.is_demo and a.step_order_id is not null`;
+  check('with no activities made from recommendations', seeded[0].n === 0, seeded);
   const auto = await tagged`select count(*)::int as n from messages where author = 'auto' and account_id like 'demo-%'`;
   const templ = await tagged`select count(*)::int as n from messages where from_template and account_id like 'demo-%'`;
   check('an auto update and a template line', auto[0].n === 1 && templ[0].n === 1, [auto, templ]);
@@ -182,8 +193,8 @@ console.log('demo rows');
   check('demo data clears', (await owner('POST', 'demo-clear')).status === 200);
   const left = await tagged`select count(*)::int as n from activities a join cases k on k.id = a.case_id where k.is_demo`;
   check('taking the roadmap with it', left[0].n === 0, left);
-  const real = await tagged`select count(*)::int as n from activities where step_order_id = ${go.id} and state = 'done'`;
-  check('and leaving a real one', real[0].n === 1, real);
+  const real = await tagged`select count(*)::int as n from activities where case_id = ${go.caseId}`;
+  check('and leaving the real ones', real[0].n === realBefore[0].n && real[0].n > 0, real);
 }
 
 const failures = failureCount();

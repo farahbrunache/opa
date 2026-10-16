@@ -6,7 +6,6 @@ import { describeStatus } from '../lib/orders.js';
 import { HttpError, handle, readCookie, readJson, send } from '../lib/http.js';
 import { tickActivity } from '../lib/client-page.js';
 import { cardView, requireClient, sessionsView, threadView } from '../lib/client-view.js';
-import { syncStepsFor } from '../lib/chapter-steps.js';
 import { requestAccess } from '../lib/sessions.js';
 
 async function mine(req, res) {
@@ -111,7 +110,6 @@ async function link(req, res) {
     await sql()`update calls set chapter_id = chapter_now(${caseId}) where order_id = any(${linked}) and chapter_id is null`;
     await sql()`update strategies set case_id = ${caseId} where order_id = any(${linked}) and case_id is null`;
     await sql()`update call_gaps set chapter_id = chapter_now(${caseId}) where order_id = any(${linked}) and chapter_id is null`;
-    for (const id of linked) await syncStepsFor(Number(id));
   }
   return mine(req, res);
 }

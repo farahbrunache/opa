@@ -9,6 +9,7 @@ const { Readable } = await import('node:stream');
 const deskEndpoint = (await import('../api/desk.js')).default;
 const { scopeOf, readsFor, chapterInFull } = await import('../lib/chapter-scope.js');
 const { questionNotes } = await import('../lib/desk-questions.js');
+const { decisionLine } = await import('../lib/desk-drafts.js');
 
 async function press(action, payload) {
   const stream = Readable.from([JSON.stringify(payload)]);
@@ -89,6 +90,17 @@ check('and the model reads it in this chapter', (await scopeOf(order)).strategy?
 check('a strategy saved after a chapter closed stays out of its summary',
   !(await chapterInFull(caseId, 1)).includes('Invented strategy.'));
 check('and the open chapter reads it', (await chapterInFull(caseId, 2)).includes('Invented strategy.'));
+
+console.log('the recommendations draft is told the decision');
+check('a new chapter not yet decided reads as not decided',
+  (await decisionLine(order, await scopeOf(order))) === 'Decision: not decided');
+for (const [ref, decision, said] of [['RSCOPE0002', 'go', 'go'], ['RSCOPE0003', 'no-go', 'no-go'], ['RSCOPE0004', null, 'not decided']]) {
+  const [made] = await tagged`
+    insert into orders (claim_token_hash, card_code_hash, card_amount_cents, payment_method, reference_code, status, decision)
+    values (${`h-${ref}`}, ${`c-${ref}`}, 700, 'wise', ${ref}, 'confirmed', ${decision}) returning id`;
+  const id = Number(made.id);
+  check(`a ${said} call is named in the draft`, (await decisionLine(id, await scopeOf(id))) === `Decision: ${said}`);
+}
 
 const failures = failureCount();
 console.log(failures ? `\n${failures} failed` : '\nall passed');

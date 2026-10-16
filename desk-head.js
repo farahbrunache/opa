@@ -23,29 +23,24 @@ function renderOrders(person) {
   box.textContent = '';
   if (!person.linkedCase) {
     head.textContent = 'Sessions bought · no account linked';
+    box.hidden = true;
     return;
   }
   head.textContent = `Sessions bought · ${person.orders.length}`;
   for (const order of person.orders) {
-    const item = el('div', null, 'item');
-    const top = el('div', null, 'line');
-    top.append(el('span', order.reference, 'mono'));
-    top.append(el('span', order.calledAt ? weekday(order.calledAt) : 'No call came back', 'muted'));
-    item.append(top);
-    const bottom = el('div', null, 'line');
-    const state = el('span');
-    if (order.decision) {
-      state.append(el('span', order.decision === 'go' ? 'Go' : 'No-go',
-        `tag ${order.decision === 'go' ? 't-go' : 't-owe'}`), ' ');
+    const card = order.thisOne ? el('button', null, 'chap') : link(null, `/desk?id=${order.id}`, 'chap');
+    if (order.thisOne) {
+      card.type = 'button';
+      card.setAttribute('aria-pressed', 'true');
     }
-    const said = [order.thisOne ? 'This session' : null,
+    card.append(el('span', order.reference, 'cn'));
+    card.append(el('b', order.calledAt ? weekday(order.calledAt) : 'No call came back'));
+    const said = [order.decision ? (order.decision === 'go' ? 'Go' : 'No-go') : null,
       order.recommendedAt ? `Next steps sent ${weekday(order.recommendedAt)}` : 'Next steps not written'];
-    state.append(el('span', said.filter(Boolean).join(' · '), 'muted'));
-    bottom.append(state);
-    if (!order.thisOne) bottom.append(link('Open', `/desk?id=${order.id}`, 'btn small'));
-    item.append(bottom);
-    box.append(item);
+    card.append(el('small', said.filter(Boolean).join(' · ')));
+    box.append(card);
   }
+  box.hidden = !person.orders.length;
 }
 
 function renderStanding(person) {

@@ -35,12 +35,18 @@ function changeRow(person, draft, change, index) {
   li.append(head);
   let title = null;
   if (change.state === 'open' && change.op === 'add') {
-    title = el('input');
-    title.type = 'text';
+    title = el('textarea');
+    title.rows = 1;
     title.maxLength = 300;
     title.value = change.title;
     title.setAttribute('aria-label', 'Change the words');
+    const fit = () => {
+      title.style.height = 'auto';
+      title.style.height = `${title.scrollHeight + 2}px`;
+    };
+    title.addEventListener('input', fit);
     li.append(title);
+    requestAnimationFrame(fit);
   } else {
     li.append(el('span', change.title, 'atext'));
   }

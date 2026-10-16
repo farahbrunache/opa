@@ -80,7 +80,7 @@ const TODAY_COUNTS = [
 const REASONS = [
   ['calls', 'New call', 't-new', () => 'Read the call, then go or no-go.'],
   ['pivots', 'Pivot', 't-pivot', (row) => `New direction: ${row.direction}. `],
-  ['followUps', 'Follow-up call', 't-call', () => 'Write next steps.'],
+  ['followUps', 'Follow-up call', 't-call', () => 'Write recommendations.'],
   ['unread', 'Message', 't-msg', () => 'Wrote to you. Waiting on your reply.'],
   ['owing', 'Yours to do', 't-owe', (row) => row.title],
   ['due', 'Follow up', 't-ask', (row) => row.title],
@@ -306,7 +306,7 @@ function rowNext(person, group) {
   }
   if (group === 'replies') return [`Next: reply · ${waited(hoursSince(person.wroteAt)).toLowerCase()}`, ''];
   if (group === 'active') {
-    if (person.followUp && !person.recommendedAt) return ['Next: write next steps · follow-up call', ''];
+    if (person.followUp && !person.recommendedAt) return ['Next: write recommendations · follow-up call', ''];
     if (person.workDueAt) return [`your work ${late(person.workDueAt)}`, 'late'];
     if (person.reminderAt) return [`Next: reminder due ${weekday(person.reminderAt)}`, ''];
     if (person.introWaiting) {
@@ -316,7 +316,7 @@ function rowNext(person, group) {
   }
   return person.recommendedAt
     ? ['Recommendation sent · nothing more to do', 'none']
-    : ['Next: write their next steps', ''];
+    : ['Next: write recommendations', ''];
 }
 
 export function renderQueue(data) {

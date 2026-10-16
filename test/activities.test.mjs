@@ -144,23 +144,14 @@ console.log('ticking on their page');
     (await ask(client, account, 'POST', '/api/client?action=activity', { activity: two.id, done: true })).status === 409);
 }
 
-console.log('steps from the letter');
+console.log('recommendations stay off the roadmap');
 {
+  const held = (await person(order)).activities.length;
   const sheet = 'Here it is.\n\n1. Invented step one.\n2. Invented step two.\n3. Invented step three.\n\nClosing.';
-  check('filing next steps works', (await owner('POST', 'recommend', { id: order, body: sheet })).status === 201);
+  check('filing numbered recommendations works', (await owner('POST', 'recommend', { id: order, body: sheet })).status === 201);
   me = await person(order);
-  const steps = me.activities.filter((a) => a.fromSteps);
-  check('each numbered step is a To do activity on their page', steps.length === 3 && steps.every((a) => a.state === 'todo' && a.shownAt)
-    && steps[0].title === 'Invented step one.', steps);
-  const theirs = (await page()).roadmap.filter((a) => a.fromCall);
-  check('and the client sees them as from the call', theirs.length === 3 && theirs.every((a) => a.group === 'todo'));
-  await ask(client, account, 'POST', '/api/client?action=activity', { activity: steps[1].id, done: true });
-  await owner('POST', 'recommend', { id: order, body: 'Here it is.\n\n1. Invented step one, reworded.\n2. Invented step two.' });
-  me = await person(order);
-  const again = me.activities.filter((a) => a.fromSteps);
-  check('a rewritten letter keeps the ticks and the words follow',
-    again.length === 2 && again[0].title === 'Invented step one, reworded.' && again[1].state === 'done', again);
-  check('a step beyond the new count is gone once it was still to do', !again.some((a) => a.title === 'Invented step three.'));
+  check('and adds no activity', me.activities.length === held && !me.activities.some((a) => a.fromSteps), me.activities);
+  check('the client roadmap has nothing from them', !(await page()).roadmap.some((a) => a.fromCall));
 }
 
 console.log('the redraw grammar');

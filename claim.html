@@ -233,7 +233,7 @@
       li.append(card);
       list.append(li);
     });
-    box.append(list);
+    if (parts.steps.length) box.append(list);
     if (parts.outro) box.append(linkedText(el('p', null, 'ctext'), parts.outro));
   }
 

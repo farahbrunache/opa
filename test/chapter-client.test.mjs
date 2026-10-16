@@ -60,12 +60,12 @@ check("and the session's sheet is never touched", decrypt(sheet.recommendations_
 page = await sessionsView(account);
 check('their page knows the chapter', page.chapter?.number === 2 && page.chapter.name === 'Bikes');
 check("and shows the chapter's own steps", page.steps?.text.startsWith('1. Fix one bike.'));
-const steps = page.roadmap.filter((a) => a.fromCall);
-check("the chapter's steps are on their roadmap, to do", steps.length === 3 && steps.every((a) => a.group === 'todo'), page.roadmap);
+check('an undecided chapter has no next move yet', page.chapter.next === null, page.chapter);
+check('the chapter decides go', (await desk('decide', { id: order, decision: 'go' })).status === 200);
+page = await sessionsView(account);
+check('and its next move is the roadmap', page.chapter.next === 'roadmap', page.chapter);
+check("the chapter's numbered recommendations put nothing on their roadmap", !page.roadmap.some((a) => a.fromCall), page.roadmap);
 check('a tick on nothing is refused', (await client('activity', { activity: 999999, done: true })).status === 404);
-const ticked = await client('activity', { activity: steps[1].id, done: true });
-check("a tick lands on the chapter's steps", ticked.status === 200 && ticked.out.roadmap.find((a) => a.id === steps[1].id).group === 'done', ticked);
-check('and not on the session', (await tagged`select count(*)::int as n from activities where step_order_id = ${order} and state = 'done'`)[0].n === 0);
 
 const thread = await threadView(account);
 check('their conversation knows where the new direction starts', thread.directions.length === 1 && thread.directions[0].name === 'Bikes');

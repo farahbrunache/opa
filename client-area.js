@@ -25,11 +25,11 @@ function stepCard(number, text) {
   return card;
 }
 
-function letterPanel(panel, session, withSteps) {
+function letterPanel(panel, session) {
   const parts = sheetSteps(session.recommendations);
   const list = panel.querySelector('.csteps');
   list.textContent = '';
-  list.hidden = !withSteps;
+  list.hidden = !parts.steps.length;
   panel.querySelector('.cdate').textContent = `Written for you · ${day(session.recommendedAt)}`;
   const intro = panel.querySelector('[data-part="intro"]');
   intro.textContent = '';
@@ -39,14 +39,11 @@ function letterPanel(panel, session, withSteps) {
   outro.textContent = '';
   outro.hidden = !parts.outro;
   linkedText(outro, parts.outro);
-  if (withSteps) {
-    parts.steps.forEach((text, i) => {
-      const li = el('li');
-      li.append(stepCard(i + 1, text));
-      list.append(li);
-    });
-  }
-  return parts.steps.length;
+  parts.steps.forEach((text, i) => {
+    const li = el('li');
+    li.append(stepCard(i + 1, text));
+    list.append(li);
+  });
 }
 
 function headline(data, items) {
@@ -187,27 +184,36 @@ function drawBring(bring) {
 
 function letterOf(data) {
   if (data.chapter) {
-    return data.steps ? { recommendations: data.steps.text, recommendedAt: data.steps.at } : null;
+    return data.steps
+      ? { recommendations: data.steps.text, recommendedAt: data.steps.at, next: data.chapter.next }
+      : null;
   }
   const session = currentSession(data);
   return session.recommendations ? session : null;
 }
 
+function nextMove(next) {
+  const line = document.getElementById('nextmove');
+  line.textContent = '';
+  line.hidden = !next;
+  if (next === 'roadmap') line.textContent = 'Your next move is your roadmap above.';
+  if (next === 'call') {
+    line.append('Your next move is another call. ');
+    const book = el('a', 'Book a session', null);
+    book.href = '/buy';
+    line.append(book);
+  }
+}
+
 function drawApproved(data) {
   const panel = document.getElementById('c-plan');
-  const progress = document.getElementById('stepprogress');
   const said = document.getElementById('stepmsg');
 
   const draw = () => {
     const letter = letterOf(data);
     panel.hidden = !letter;
-    if (letter) letterPanel(panel, letter, true);
-    const steps = (data.roadmap || []).filter((i) => i.fromCall);
-    const done = steps.filter((i) => i.group === 'done').length;
-    const n = steps.length;
-    progress.textContent = n
-      ? `${n === 1 ? 'Its one step is' : `Its ${n} steps are`} on your roadmap above: ${done} done, ${n - done} to do. Tap a circle when one is done. Farah sees it right away.`
-      : 'What it says to do is on your roadmap above.';
+    if (letter) letterPanel(panel, letter);
+    nextMove(letter && (letter.next === 'call' ? 'call' : 'roadmap'));
     document.getElementById('heroline').textContent = headline(data, data.roadmap || []);
     drawRoadmap(data, tick);
   };
@@ -247,9 +253,9 @@ function drawFinished(data) {
   const session = currentSession(data);
   const panel = document.getElementById('c-plan');
   panel.querySelector('.clabel').textContent = 'Your recommendation';
-  letterPanel(panel, session, true);
+  letterPanel(panel, session);
   panel.hidden = false;
-  document.getElementById('stepprogress').hidden = true;
+  nextMove(session.next === 'call' ? 'call' : null);
   document.getElementById('eyebrow').textContent = 'One Percent · Your session';
   document.getElementById('heroline').textContent = data.firstName
     ? `Your session is complete, ${data.firstName}.`

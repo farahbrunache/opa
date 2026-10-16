@@ -138,6 +138,11 @@ export function owed(person) {
     out.push({ what: 'Write recommendations.', yours: true,
       next: 'Write recommendations', go: '#steps', button: 'Recommendations' });
   }
+  const decided = now && now.number > 1 ? now.decision : person.decision;
+  if (person.recommendedAt && decided === 'go' && !(person.activities || []).length) {
+    out.push({ what: 'Recommendations sent. The roadmap is empty.', yours: true,
+      next: 'Build the roadmap', go: '#activities', button: 'Roadmap' });
+  }
   return out;
 }
 

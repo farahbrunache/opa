@@ -43,7 +43,7 @@ import { queue } from '../lib/desk-queue.js';
 import { demoClear, demoSeed, markMine } from '../lib/desk-demo.js';
 import { block, close, unblock } from '../lib/desk-state.js';
 import { decideInChapter, editChapter, pivot } from '../lib/desk-chapters.js';
-import { recommendInChapter, syncStepsFor } from '../lib/chapter-steps.js';
+import { recommendInChapter } from '../lib/chapter-steps.js';
 import { flag, referralTree, setBroughtBy, unflag } from '../lib/referrals.js';
 import { agentScript, callRecord } from '../lib/desk-voice.js';
 import { listPrompts, savePrompt } from '../lib/prompts.js';
@@ -96,10 +96,6 @@ async function postSteps(id) {
   return 1;
 }
 
-async function stepsOntoRoadmap(id) {
-  await syncStepsFor(id);
-}
-
 async function decide(req, res) {
   requireAdmin(req);
   await ensureSchema();
@@ -128,7 +124,6 @@ async function decide(req, res) {
   }
   await record(id, 'decided', `${decision}. ${String(body.note || '').trim()}`.trim());
   const opened = decision === 'go' ? await openTheConversation(id, await postSteps(id)) : false;
-  if (decision === 'go') await stepsOntoRoadmap(id);
   send(res, 200, { ok: true, decision, opened });
 }
 
@@ -160,7 +155,6 @@ async function recommend(req, res) {
   await markUsed(id, null);
   await record(id, 'recommended', 'Written.');
   const opened = await openTheConversation(id, await postSteps(id));
-  await stepsOntoRoadmap(id);
   send(res, 201, { ok: true, opened });
 }
 

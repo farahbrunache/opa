@@ -42,7 +42,7 @@ console.log('working');
 const active = await tab('active');
 const marisol = named(active, 'Marisol Ketterby');
 check('late work has its date', Boolean(marisol?.workDueAt), marisol);
-check('activities are counted with the ones done', marisol?.activities === 7 && marisol?.activitiesDone === 4, marisol);
+check('activities are counted with the ones done', marisol?.activities === 4 && marisol?.activitiesDone === 2, marisol);
 check('and the sessions left on the card', marisol?.sessionsLeft === 3, marisol);
 check('a no-go is not in working', !named(active, 'Dev Oyelaranmi'));
 const ines = named(active, 'Ines Halvorgaard');

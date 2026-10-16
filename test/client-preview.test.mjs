@@ -56,7 +56,11 @@ const unlinked = await order('PREVW-CCCCC', null, null, null);
 
 await owner('POST', 'recommend', { id: go, body: '1. Do the first thing.\n2. Do the second.' });
 await owner('POST', 'recommend', { id: nogo, body: '1. Something to read.' });
-const firstStep = (await as('acct-pv-go', 'GET', 'mine')).out.roadmap.find((a) => a.fromCall);
+const [firstStep] = await tagged`
+  insert into activities (case_id, position, title_encrypted, state, source, shown_at)
+  select id, 1, ${encrypt('Invented activity')}, 'todo', 'you', now() from cases where account_id = 'acct-pv-go'
+  returning id`;
+firstStep.id = Number(firstStep.id);
 await as('acct-pv-go', 'POST', 'activity', { activity: firstStep.id });
 await as('acct-pv-go', 'POST', 'send', { body: 'An invented question.' });
 await tagged`insert into held_sessions (case_id, rate) select id, 'standard' from cases where account_id = 'acct-pv-go'`;

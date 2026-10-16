@@ -320,8 +320,10 @@ r = await run(desk, 'POST', '/api/desk?action=introduction-record', { id: 1, int
 check('recording what came of one refuses without a session', r.statusCode === 401, r.payload);
 r = await run(desk, 'GET', '/api/desk?action=funnel');
 check('the funnel refuses without a session', r.statusCode === 401, r.payload);
+r = await run(desk, 'POST', '/api/desk?action=strategy', { id: 1, body: 'x' });
+check('saving a strategy refuses without a session', r.statusCode === 401, r.payload);
 r = await run(desk, 'POST', '/api/desk?action=first-customer', { id: 1 });
-check('recording the outcome refuses without a session', r.statusCode === 401, r.payload);
+check('the manual first-customer tick is gone', r.statusCode === 400, r.payload);
 r = await run(desk, 'GET', '/api/desk?action=nonsense');
 check('an unknown desk action is refused', r.statusCode === 400, r.payload);
 check('and the refusal names the action it was asked for', /nonsense/.test(r.payload?.error || ''), r.payload);

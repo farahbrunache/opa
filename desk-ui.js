@@ -130,6 +130,10 @@ export function owed(person) {
   if (roadmap) {
     out.push({ what: roadmap[0], yours: true, next: roadmap[1], go: '#activities', button: 'Roadmap' });
   }
+  if (!person.strategy?.live) {
+    out.push({ what: 'Write the strategy.', yours: true,
+      next: 'Write the strategy', go: '#strategy', button: 'Strategy' });
+  }
   if (!person.recommendedAt) {
     out.push({ what: 'Write their next steps.', yours: true,
       next: 'Write their next steps', go: '#steps', button: 'Next steps' });
@@ -137,7 +141,7 @@ export function owed(person) {
   return out;
 }
 
-export const MODEL_ACTIONS = ['draft', 'call-fields-draft', 'questions-draft', 'find-matches', 'call-gaps', 'roadmap-draft'];
+export const MODEL_ACTIONS = ['draft', 'strategy-draft', 'questions-draft', 'find-matches', 'call-gaps', 'roadmap-draft'];
 
 export const aiScope = { withSummary: false };
 

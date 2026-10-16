@@ -7,7 +7,7 @@ import { AUTO_UPDATE_MAX, isDecision } from '../lib/desk.js';
 import { OPENING_LINE } from '../lib/orders.js';
 
 import { HttpError, handle, query, readJson, send } from '../lib/http.js';
-import { caseOf, orderId, record } from '../lib/desk-events.js';
+import { orderId, record } from '../lib/desk-events.js';
 
 import { introduce, recordIntroduction } from '../lib/desk-introductions.js';
 import { chooseModel, writeDraft } from '../lib/desk-drafts.js';
@@ -34,49 +34,19 @@ import { clientPreview } from '../lib/desk-preview.js';
 import { linkOwnProfile, readOwnProfile } from '../lib/desk-own-profile.js';
 import { copyTrades, pairs, setTrade } from '../lib/desk-trades.js';
 import { listSkills, setSkills } from '../lib/desk-skills.js';
-import { draftCallFields, saveCallFields } from '../lib/desk-callfields.js';
+import { draftStrategy, saveStrategy } from '../lib/desk-strategy.js';
 import { findGaps } from '../lib/desk-gaps.js';
 import { STEPS, startClock, timeReport, timeStep } from '../lib/desk-time.js';
 import { funnel } from '../lib/desk-funnel.js';
 import { setPool } from '../lib/desk-approached.js';
 import { queue } from '../lib/desk-queue.js';
 import { demoClear, demoSeed, markMine } from '../lib/desk-demo.js';
-import { block, close, recommendationDone, unblock } from '../lib/desk-state.js';
+import { block, close, unblock } from '../lib/desk-state.js';
 import { decideInChapter, editChapter, pivot } from '../lib/desk-chapters.js';
 import { recommendInChapter, syncStepsFor } from '../lib/chapter-steps.js';
 import { flag, referralTree, setBroughtBy, unflag } from '../lib/referrals.js';
 import { agentScript, callRecord } from '../lib/desk-voice.js';
 import { listPrompts, savePrompt } from '../lib/prompts.js';
-
-function needsCase(caseId) {
-  if (caseId) return caseId;
-  throw new HttpError(
-    409,
-    'They have not signed in yet, so there is nobody to work with. This opens once they open '
-      + 'their claim link while signed in to Skills Economy.',
-  );
-}
-
-async function firstCustomer(req, res) {
-  requireAdmin(req);
-  await ensureSchema();
-  const body = await readJson(req);
-  const id = orderId(body.id);
-  const reached = body.reached !== false;
-
-  const confirmed = await sql()`select 1 from orders where id = ${id} and status = 'confirmed'`;
-  if (!confirmed.length) throw new HttpError(404, 'No confirmed order with that number.');
-  const caseId = needsCase(await caseOf(id));
-
-  const done = await sql()`
-    update cases
-       set first_customer_at = case when ${reached} then coalesce(first_customer_at, now()) else null end
-     where id = ${caseId}
-     returning first_customer_at
-  `;
-  await record(id, 'first-customer', reached ? String(body.note || '').trim() : 'Taken back off.');
-  send(res, 200, { ok: true, at: done[0].first_customer_at });
-}
 
 async function openTheConversation(id, justPosted = 0) {
   const rows = await sql()`
@@ -171,6 +141,7 @@ async function recommend(req, res) {
   if (!text) throw new HttpError(400, 'Empty next steps are not a recommendation.');
   if (await recommendInChapter(id, text)) {
     await markUsed(id, null);
+    await sql()`update orders set recommendation_done_at = coalesce(recommendation_done_at, now()) where id = ${id}`;
     send(res, 201, { ok: true, opened: false });
     return;
   }
@@ -178,7 +149,8 @@ async function recommend(req, res) {
   const done = await sql()`
     update orders set
       recommendations_encrypted = ${encrypt(text)},
-      recommendations_written_at = now()
+      recommendations_written_at = now(),
+      recommendation_done_at = coalesce(recommendation_done_at, now())
      where id = ${id} and status = 'confirmed'
      returning id
   `;
@@ -274,15 +246,13 @@ const ACTIONS = {
     model: chooseModel,
     introduce,
     'introduction-record': recordIntroduction,
-    'first-customer': firstCustomer,
-    'recommendation-done': recommendationDone,
     note: addNote,
     trade: setTrade,
     skills: setSkills,
     'trades-copy': copyTrades,
     'own-profile': linkOwnProfile,
-    'call-fields': saveCallFields,
-    'call-fields-draft': draftCallFields,
+    strategy: saveStrategy,
+    'strategy-draft': draftStrategy,
     'call-gaps': findGaps,
     'ai-check-save': aiCheckSave,
     'slot-set': setSlot,

@@ -42,8 +42,9 @@ const now = await drafts.familiesNow();
 check('and only the roadmap', now.find((b) => b.family === 'roadmap').inUse === 'A'
   && now.find((b) => b.family === 'reply').inUse === 'B', now);
 check('the record picker sets the sheet alone', (await owner('model', { slot: 'A' })).out.for === 'sheet'
-  && (await drafts.slotFor('sheet')) === 'A' && (await drafts.slotFor('recap')) === 'A' && (await drafts.slotFor('reply')) === 'B');
-check('a kind names its family', drafts.familyOf('fields:brief') === 'fields' && drafts.familyOf(null) === 'sheet'
+  && (await drafts.slotFor('sheet')) === 'A' && (await drafts.slotFor('summary')) === 'A' && (await drafts.slotFor('strategy')) !== 'A'
+  && (await drafts.slotFor('reply')) === 'B');
+check('a kind names its family', drafts.familyOf('strategy') === 'strategy' && drafts.familyOf(null) === 'sheet'
   && drafts.familyOf('gaps:c-1') === 'gaps');
 
 console.log('a draft priced by its seconds');

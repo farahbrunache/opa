@@ -1,48 +1,20 @@
 import { el, link, msg, post, weekday } from '/desk-ui.js';
-import { once, settled, wasBefore } from '/desk-after.js';
+import { once, settled } from '/desk-after.js';
 
-function end(label, at, button) {
-  const step = el('div', null, 'step');
-  step.append(el('span', null, at ? 'dot done' : 'dot'));
-  const text = el('div', null, 'stepbody');
-  text.append(el('span', label));
-  if (at) text.append(el('span', weekday(at), 'faint'));
-  step.append(text, button);
-  return step;
-}
-
-function press(label, action, body, said, putBack) {
+function press(label, action, body, said) {
   const button = el('button', label, 'btn small');
   button.type = 'button';
   once(button, 'click', async () => {
     button.disabled = true;
     try {
       await post(action, body);
-      await settled(said, putBack);
+      await settled(said);
     } catch (error) {
       button.disabled = false;
       msg('rmsg', error.message, 'bad');
     }
   });
   return button;
-}
-
-function renderEnds(person) {
-  const box = document.getElementById('ends');
-  box.textContent = '';
-  const rec = Boolean(person.recommendationDoneAt);
-  box.append(end('Finished a recommendation', person.recommendationDoneAt,
-    press(rec ? 'Take that back' : 'Done', 'recommendation-done', { id: person.id, done: !rec },
-      rec ? 'Taken back off.' : 'Recorded: completed a recommendation.',
-      wasBefore('recommendation-done', { id: person.id, done: rec }))));
-  const paid = Boolean(person.firstCustomerAt);
-  const customer = person.linkedCase
-    ? press(paid ? 'Take that back' : 'Done', 'first-customer', { id: person.id, reached: !paid },
-      paid ? 'Taken back off.' : 'First customer recorded.',
-      wasBefore('first-customer', { id: person.id, reached: paid }))
-    : el('span', 'No account linked', 'faint');
-  box.append(end('Has a paying customer', person.firstCustomerAt, customer));
-  document.getElementById('progresscount').textContent = `${Number(rec) + Number(paid)} of 2`;
 }
 
 function renderOrders(person) {
@@ -174,8 +146,7 @@ function renderWhose(person) {
   };
 }
 
-export function renderProgress(person) {
-  renderEnds(person);
+export function renderHead(person) {
   renderOrders(person);
   renderStanding(person);
   renderWhose(person);

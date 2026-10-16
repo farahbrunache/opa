@@ -54,11 +54,10 @@ async function order(n, caseId) {
 }
 async function call(orderId, n, words, summary) {
   const [row] = await tagged`
-    insert into calls (order_id, call_id, transcript_encrypted, summary_encrypted, fields_encrypted,
+    insert into calls (order_id, call_id, transcript_encrypted, summary_encrypted,
                        started_at, ended_at)
     values (${orderId}, ${'gap-call-' + n}, ${encrypt(words)},
             ${encrypt(JSON.stringify({ call_summary: summary }))},
-            ${encrypt(JSON.stringify({ trade: 'Mows lawns', rate: '40 a yard', inTheWay: 'No mower', firstCustomer: 'not said' }))},
             now() - (${n} || ' minutes')::interval, now())
     returning id`;
   return Number(row.id);
@@ -68,6 +67,8 @@ const b = await order('B', null);
 const a1 = await call(a, 1, 'Agent: What do you do?\nCaller: ZEBRA-WORDS mowing twice a month.', 'ZEBRA-SUMMARY');
 const a2 = await call(a, 2, 'Agent: Anything else?\nCaller: OTTER-WORDS from a later call.', 'OTTER-SUMMARY');
 await call(b, 3, 'Agent: What do you do?\nCaller: HERON-WORDS from somebody else.', 'HERON-SUMMARY');
+await tagged`insert into strategies (order_id, case_id, version, body_encrypted, takeaways_encrypted)
+             values (${a}, ${Number(caseA.id)}, 1, ${encrypt('Invented plan.')}, ${encrypt(JSON.stringify(['40 a yard']))})`;
 
 const unset = await post('call-gaps', { id: a, call: a1 });
 check('with no model set up it\'s refused, and nothing is saved', unset.status === 503, unset);
@@ -76,8 +77,9 @@ check('and no set exists', (await tagged`select count(*)::int as n from call_gap
 console.log('only this call');
 const notes = (await gapNotes(a, a1)).join('\n');
 check('the call\'s own transcript goes in', notes.includes('ZEBRA-WORDS'));
-check('its summary, its four lines and the job title go in',
-  notes.includes('ZEBRA-SUMMARY') && notes.includes('40 a yard') && notes.includes('Invented lawn care'));
+check('its summary, the live strategy and the job title go in',
+  notes.includes('ZEBRA-SUMMARY') && notes.includes('Invented plan.') && notes.includes('40 a yard')
+    && notes.includes('Invented lawn care'));
 check('another call of the same person\'s doesn\'t', !notes.includes('OTTER'));
 check('another person\'s call doesn\'t', !notes.includes('HERON'));
 check('a call on another order isn\'t read at all', (await gapNotes(b, a1)) === null);

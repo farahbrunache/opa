@@ -1,6 +1,5 @@
 import { aiScope, askModel, el, modelReady, msg, paidButton, post, weekday } from '/desk-ui.js';
 import { once, resumeDraft, settled } from '/desk-after.js';
-import { FIELDS } from '/desk-callfields.js';
 
 const view = { personId: null, number: null, person: null };
 const sheet = { from: null };
@@ -119,16 +118,6 @@ function pastChapter(person, chapter) {
     `tag ${chapter.decision === 'go' ? 't-go' : chapter.decision === 'no-go' ? 't-owe' : 't-demo'}`));
   top.append(line);
 
-  const calls = person.calls.filter((c) => c.fields && chapterNumber(person, c.chapterId) === chapter.number);
-  for (const call of calls) {
-    top.append(el('span', `Call lines · ${weekday(call.startedAt)}`, 'label'));
-    const list = el('dl', null, 'lines');
-    for (const [key, label] of FIELDS) {
-      list.append(el('dt', label), el('dd', call.fields[key] || '—'));
-    }
-    top.append(list);
-  }
-
   const shut = chapter.closedWith || { activities: [], work: [] };
   const rows = [
     ...(shut.activities || []).map((title) => [`Activity: ${title}`, 'Dropped · changed direction']),
@@ -213,54 +202,6 @@ function renderBrief(person) {
   section.hidden = !shown;
   document.getElementById('jumpbrief').hidden = !shown;
   if (!shown) return;
-
-  const lines = document.getElementById('brieflines');
-  const grid = document.getElementById('brieflinefields');
-  const fill = document.getElementById('brieffill');
-  lines.hidden = now.number < 2;
-  fill.hidden = now.number < 2;
-  if (now.number > 1) {
-    grid.textContent = '';
-    for (const [key, label] of FIELDS) {
-      const field = el('div', null, 'field');
-      const name = el('label', label);
-      name.htmlFor = `briefline-${key}`;
-      const input = el('input');
-      Object.assign(input, { id: `briefline-${key}`, type: 'text', maxLength: 300, value: now.fields?.[key] || '' });
-      input.dataset.key = key;
-      field.append(name, input);
-      grid.append(field);
-    }
-    if (modelReady(fill, person) && !now.brief) fill.disabled = true;
-    const show = (read) => {
-      for (const input of grid.querySelectorAll('input')) input.value = read.fields[input.dataset.key] || '';
-    };
-    fill.querySelector('.paidlabel').textContent = 'Fill call lines from it';
-    resumeDraft(fill, person, 'fields:brief', show);
-    once(fill, 'click', async () => {
-      const label = fill.querySelector('.paidlabel');
-      fill.disabled = true;
-      label.textContent = 'Reading the brief…';
-      try {
-        show(await askModel(fill, { id: view.person.id, brief: true }, 'call-fields-draft'));
-      } catch (error) {
-        msg('rmsg', error.message, 'bad');
-      } finally {
-        fill.disabled = false;
-        label.textContent = 'Fill call lines from it';
-      }
-    });
-    once(lines, 'submit', async (event) => {
-      event.preventDefault();
-      const fields = Object.fromEntries([...grid.querySelectorAll('input')].map((i) => [i.dataset.key, i.value]));
-      try {
-        await post('chapter-edit', { id: view.person.id, number: currentChapter(view.person).number, field: 'fields', fields });
-        await settled('Lines saved.');
-      } catch (error) {
-        msg('rmsg', error.message, 'bad');
-      }
-    });
-  }
 
   const by = now.fromMessageId ? 'from their message' : now.fromCallId ? 'from a call' : null;
   document.getElementById('briefsaid').textContent = [`Chapter ${now.number}`, by].filter(Boolean).join(' · ');

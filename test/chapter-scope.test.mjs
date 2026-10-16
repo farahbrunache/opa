@@ -8,7 +8,6 @@ const { signSession, encrypt } = await import('../lib/crypto.js');
 const { Readable } = await import('node:stream');
 const deskEndpoint = (await import('../api/desk.js')).default;
 const { scopeOf, readsFor, chapterInFull } = await import('../lib/chapter-scope.js');
-const { recapFacts } = await import('../lib/draft-recap.js');
 const { questionNotes } = await import('../lib/desk-questions.js');
 
 async function press(action, payload) {
@@ -49,9 +48,7 @@ await say('client', 'Candles are slow this month.', 5);
 console.log('');
 console.log('what the model reads after a pivot');
 
-const before = await recapFacts(order);
-check('in Chapter 1, a catch-up reads what it always did', before.lines.some((l) => l.includes('Old Contact'))
-  && before.lines.some((l) => l.includes('Candles are slow')));
+check('in Chapter 1, nothing leads what the model reads', (await scopeOf(order)).lead.length === 0);
 check('and the What AI reads box stays away', (await readsFor(order, account)) === null);
 
 const started = await press('pivot', {
@@ -63,15 +60,11 @@ await say('client', 'Two offices want monthly visits.', 0);
 await tagged`insert into contacts (case_id, name_encrypted) values (${caseId}, ${encrypt('New Contact')})`;
 
 const plain = await scopeOf(order);
-const recap = await recapFacts(order, plain);
-const text = recap.lines.join('\n');
-check('a catch-up starts from the brief', text.includes('I fix bikes now.'));
-check('and reads what was said since the pivot', text.includes('Two offices want monthly visits.'));
-check('and nothing said before it', !text.includes('Candles are slow'), text);
-check('and only the work stamped with this chapter', text.includes('New Contact') && !text.includes('Old Contact'));
-check("and this chapter's decision, not the session's", text.includes('No decision on this chapter yet'));
+const text = plain.lead.join('\n');
+check('what the model reads starts from the brief', text.includes('I fix bikes now.'));
+check("and this chapter's decision is unset", plain.decision === null);
 check('the earlier summary stays out unless asked for', !text.includes('Candles, one call'));
-const asked = (await recapFacts(order, await scopeOf(order, { withSummary: true }))).lines.join('\n');
+const asked = (await scopeOf(order, { withSummary: true })).lead.join('\n');
 check('and goes along when the chip is on', asked.includes('Candles, one call, slow sales.'));
 
 const notes = await questionNotes(order, plain);
@@ -88,11 +81,14 @@ const full = await chapterInFull(caseId, 1);
 check('a summary is written from its chapter in full', full.includes('I sell candles') && full.includes('Candles are slow'));
 check('and nothing from the chapter after it', !full.includes('Two offices'));
 
-check('the lines from the brief save on the chapter',
-  (await press('chapter-edit', { id: order, number: 2, field: 'fields', fields: { trade: 'Bike mechanic' } })).status === 200);
-check('and the model reads them', (await scopeOf(order)).fields?.trade === 'Bike mechanic');
-check("a closed chapter's lines stay as they were",
-  (await press('chapter-edit', { id: order, number: 1, field: 'fields', fields: { trade: 'x' } })).status === 409);
+check('lines from the brief are no longer a thing to save',
+  (await press('chapter-edit', { id: order, number: 2, field: 'fields', fields: { trade: 'x' } })).status === 400);
+check('a strategy saves on the person',
+  (await press('strategy', { id: order, body: 'Invented strategy.', takeaways: '- Invented point.', after: 0 })).status === 201);
+check('and the model reads it in this chapter', (await scopeOf(order)).strategy?.body === 'Invented strategy.');
+check('a strategy saved after a chapter closed stays out of its summary',
+  !(await chapterInFull(caseId, 1)).includes('Invented strategy.'));
+check('and the open chapter reads it', (await chapterInFull(caseId, 2)).includes('Invented strategy.'));
 
 const failures = failureCount();
 console.log(failures ? `\n${failures} failed` : '\nall passed');

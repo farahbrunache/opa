@@ -51,11 +51,12 @@ globalThis.fetch = async (address, init = {}) => {
 console.log('');
 console.log('buttons by how hard the work is');
 const tiers = Object.fromEntries((await drafts.familiesNow()).map((b) => [b.family, b.chosen]));
-check('the next steps and the roadmap start on the large model', tiers.sheet === 'C' && tiers.roadmap === 'C', tiers);
+check('the strategy, the next steps and the roadmap start on the large model',
+  tiers.strategy === 'C' && tiers.sheet === 'C' && tiers.roadmap === 'C', tiers);
 check('replies, gaps, questions and matches on the mid-size one',
   ['reply', 'gaps', 'questions', 'matches'].every((f) => tiers[f] === 'B'), tiers);
-check('summaries, call lines and catch-ups on the small one',
-  ['summary', 'fields', 'recap'].every((f) => tiers[f] === 'A'), tiers);
+check('summaries on the small one', tiers.summary === 'A', tiers);
+check('call lines and catch-ups are gone', !('fields' in tiers) && !('recap' in tiers), tiers);
 check('with nothing set up, nothing is in use', (await drafts.familiesNow()).every((b) => b.inUse === null));
 
 console.log('picking an endpoint for a slot');

@@ -7,10 +7,10 @@ import { renderCalls } from '/desk-calls.js';
 import { renderContacts } from '/desk-contacts.js';
 import { once, resumeDraft, settled, wasBefore } from '/desk-after.js';
 import { renderThread } from '/desk-thread.js';
-import { renderRecap } from '/desk-recap.js';
+import { renderStrategy } from '/desk-strategy.js';
 import { renderQuestions } from '/desk-questions.js';
 import { renderMatches } from '/desk-matches.js';
-import { renderProgress } from '/desk-progress.js';
+import { renderHead } from '/desk-head.js';
 import { renderLog } from '/desk-log.js';
 import { watchJumps } from '/desk-jump.js';
 import { currentChapter, renderChapters } from '/desk-chapters.js';
@@ -163,8 +163,6 @@ function renderDrafting(person) {
   const note = document.getElementById('draftnote');
   const row = document.getElementById('models');
   row.textContent = '';
-  button.hidden = !person.calls.some((call) => call.transcript);
-  if (button.hidden) return;
   modelReady(button, person);
 
   for (const slot of drafting.slots || []) {
@@ -200,7 +198,7 @@ function renderDrafting(person) {
       written.fellBack ? 'fallback model' : null,
     ].filter(Boolean).join(' · ');
   };
-  label.textContent = 'Draft from the call';
+  label.textContent = 'Draft from the strategy';
   resumeDraft(button, person, null, show);
 
   once(button, 'click', async () => {
@@ -213,7 +211,7 @@ function renderDrafting(person) {
       msg('rmsg', error.message, 'bad');
     } finally {
       button.disabled = false;
-      label.textContent = 'Draft from the call';
+      label.textContent = 'Draft from the strategy';
     }
   });
 }
@@ -221,13 +219,14 @@ function renderDrafting(person) {
 export function renderPerson(person) {
   renderHeader(person);
   renderChapters(person);
+  renderHead(person);
   renderNext(person);
-  renderRecap(person);
   renderDecision(person);
   renderBroughtBy(person);
   renderPlan(person);
   renderThread(person);
   renderCalls(person);
+  renderStrategy(person);
   renderRecommendations(person);
   renderQuestions(person);
   renderActivities(person);
@@ -236,7 +235,6 @@ export function renderPerson(person) {
   renderMatches(person);
   renderIntroductions(person);
   renderTrades(person);
-  renderProgress(person);
   renderLog(person);
   watchJumps();
 }

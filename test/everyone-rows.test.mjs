@@ -24,10 +24,10 @@ await seedDemo();
 console.log('');
 console.log('new calls');
 const waiting = await tab('waiting');
-const unread = waiting.people.filter((p) => !p.name && !p.callRead);
-const read = waiting.people.filter((p) => !p.name && p.callRead);
-check('a call nobody has read says read the call', unread.length >= 1, waiting.people);
-check('a call with its four lines saved says decide', read.length >= 1, waiting.people);
+const unread = waiting.people.filter((p) => !p.name && !p.hasStrategy);
+const read = waiting.people.filter((p) => !p.name && p.hasStrategy);
+check('a call with no strategy says write the strategy', unread.length >= 1, waiting.people);
+check('a call with a strategy says decide', read.length >= 1, waiting.people);
 check('and neither has an account linked', [...unread, ...read].every((p) => p.linked === false));
 check('a session decided again under a linked person carries the name',
   Boolean(named(waiting, 'Odile Marchbanks')));

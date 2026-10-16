@@ -17,12 +17,14 @@ const realSetTimeout = globalThis.setTimeout;
 globalThis.setTimeout = (run, ms, ...rest) => realSetTimeout(run, ms === 1_500 ? 5 : ms, ...rest);
 
 let submits = 0;
+let lastRun = null;
 let statusAnswer = () => ({ status: 'IN_QUEUE' });
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (address, init) => {
   const url = String(address);
   if (url.endsWith('/run') && init?.method === 'POST') {
     submits += 1;
+    lastRun = String(init.body || '');
     return { ok: true, text: async () => JSON.stringify({ id: `job-${submits}` }) };
   }
   if (url.includes('/status/')) {
@@ -63,7 +65,7 @@ const pressDraft = (id, of = 'sheet') => desk('POST', 'draft', { id, of });
 const result = async (draftId) => (await desk('GET', `draft-result&id=${draftId}`)).out;
 const offered = async (id) => (await desk('GET', `person&id=${id}`)).out.drafting.jobs;
 
-async function newOrder(ref) {
+async function newOrder(ref, { strategy = true } = {}) {
   const [row] = await tagged`
     insert into orders (claim_token_hash, card_code_hash, card_amount_cents, payment_method,
                         reference_code, status)
@@ -72,6 +74,10 @@ async function newOrder(ref) {
   const id = Number(row.id);
   await tagged`insert into calls (order_id, call_id, transcript_encrypted)
                values (${id}, ${`call-${ref}`}, ${encrypt('Agent: What do you do?\nCaller: I fix bikes.')})`;
+  if (strategy) {
+    await tagged`insert into strategies (order_id, version, body_encrypted, takeaways_encrypted)
+                 values (${id}, 1, ${encrypt('Invented strategy.')}, ${encrypt('[]')})`;
+  }
   return id;
 }
 
@@ -206,51 +212,84 @@ console.log('a job nothing starts is given up after ten minutes');
 }
 
 console.log('');
-console.log('a catch-up is saved');
+console.log('next steps are drafted from the strategy');
 {
-  const made = await tagged`insert into cases (account_id) values ('acct-draft') returning id`;
-  await tagged`update orders set case_id = ${Number(made[0].id)}, decision = 'go',
-                 decision_at = now(), recommendations_encrypted = ${encrypt('Charge per job.')},
-                 recommendations_written_at = now()
-                where id = ${order}`;
-  await tagged`insert into drafts (order_id, slot, model, job_id) values (${order}, 'A', 'a-test-model', 'sheet-job')`;
+  const bare = await newOrder('RDRAFTBARE', { strategy: false });
   const before = submits;
-  statusAnswer = (job) => (job === `job-${before + 1}`
-    ? { status: 'COMPLETED', output: { content: 'Go. Next steps written. Nothing moved since.' } }
-    : { status: 'IN_QUEUE' });
-  const recap = await pressDraft(order, 'recap');
-  check('a catch-up starts', recap.status === 202, recap);
-  check('its own job rather than a sheet job in flight', submits === before + 1, [before, submits]);
-  await jobs.follow(recap.out.draftId);
-  const saved = await tagged`
-    select r.content_encrypted, d.kind from recaps r join drafts d on d.id = r.draft_id
-     where r.order_id = ${order}`;
-  check('its words are saved against the draft that says what it cost',
-    saved.length === 1 && saved[0].kind === 'recap'
-      && decrypt(saved[0].content_encrypted) === 'Go. Next steps written. Nothing moved since.',
-    saved);
-  check('and the record does not offer it again, because it is already saved',
-    !(await offered(order)).some((j) => j.kind === 'recap'));
+  const refused = await pressDraft(bare);
+  check('with no strategy the press is refused and says to write it first',
+    refused.status === 409 && /strategy first/.test(refused.out?.error) && submits === before, refused);
+  statusAnswer = () => ({ status: 'COMPLETED', output: { content: 'A sheet.' } });
+  const pressed = await pressDraft(order);
+  check('with one, it reads the strategy and not the call',
+    pressed.status === 202 && lastRun.includes('Invented strategy.') && !lastRun.includes('I fix bikes'), lastRun);
+  await jobs.settleAll();
 }
 
 console.log('');
-console.log('call lines do not pick up a sheet job');
+console.log('a strategy is drafted, saved and kept in versions');
 {
-  const [call] = await tagged`
-    insert into calls (order_id, call_id, transcript_encrypted, ended_at)
-    values (${order}, 'call-lines', ${encrypt('I bake bread.')}, now()) returning id`;
+  const fresh = await newOrder('RDRAFTSTRAT', { strategy: false });
   const before = submits;
   statusAnswer = (job) => (job === `job-${before + 1}`
-    ? { status: 'COMPLETED', output: { content: 'Trade: Baker' } }
-    : { status: 'COMPLETED', output: { content: 'A sheet.' } });
-  const pressed = await desk('POST', 'call-fields-draft', { id: order, call: Number(call.id) });
-  check('call lines start their own job', submits === before + 1, [before, submits, pressed]);
+    ? { status: 'COMPLETED', output: { content: 'The problem\nInvented problem.\n\nKey takeaways:\n- First point.\n- Second point.' } }
+    : { status: 'COMPLETED', output: { content: 'The problem\nRevised.\nWhat changed: Invented change.\nKey takeaways:\n- Third point.' } });
+  const pressed = await desk('POST', 'strategy-draft', { id: fresh });
+  check('a first draft reads the calls', pressed.status === 202 && lastRun.includes('I fix bikes'), pressed);
   await jobs.settleAll();
   const out = await result(pressed.out.draftId);
-  check('and come back as the four lines', out.payload?.fields?.trade === 'Baker', out);
-  const saved = await desk('POST', 'call-fields', { id: order, call: Number(call.id), fields: { trade: 'Baker' } });
-  check('saving the lines', saved.status === 200, saved);
-  check('marks the draft used', !(await offered(order)).some((j) => j.kind === `fields:${call.id}`));
+  check('and comes back as the strategy and its takeaways',
+    out.payload?.body === 'The problem\nInvented problem.'
+      && JSON.stringify(out.payload?.takeaways) === JSON.stringify(['First point.', 'Second point.']), out);
+  check('nothing is saved until Save', (await tagged`select 1 from strategies where order_id = ${fresh}`).length === 0);
+  check('so the record still offers it', (await offered(fresh)).some((j) => j.kind === 'strategy'));
+
+  const saved = await desk('POST', 'strategy', { id: fresh, body: out.payload.body, takeaways: out.payload.takeaways, after: 0 });
+  check('Save makes version 1', saved.status === 201 && saved.out.version === 1, saved);
+  check('and marks the draft used', !(await offered(fresh)).some((j) => j.kind === 'strategy'));
+  const same = await desk('POST', 'strategy', { id: fresh, body: out.payload.body, takeaways: out.payload.takeaways, after: 1 });
+  check('saving the same again is refused', same.status === 409, same);
+  const behind = await desk('POST', 'strategy', { id: fresh, body: 'Other.', takeaways: '', after: 0 });
+  check('saving over a newer version is refused', behind.status === 409, behind);
+  const empty = await desk('POST', 'strategy', { id: fresh, body: '  ', after: 1 });
+  check('an empty strategy is refused', empty.status === 400, empty);
+
+  const quiet = await desk('POST', 'strategy-draft', { id: fresh });
+  check('a redraft with nothing new since is refused', quiet.status === 409 && /Nothing has come in/.test(quiet.out?.error), quiet);
+  await tagged`insert into calls (order_id, call_id, transcript_encrypted, ended_at)
+               values (${fresh}, 'call-strat-2', ${encrypt('Caller: Invented later call.')}, now() + interval '1 second')`;
+  const again = await desk('POST', 'strategy-draft', { id: fresh });
+  check('a redraft reads the current strategy and what is new since',
+    again.status === 202 && lastRun.includes('Invented problem.') && lastRun.includes('First point.')
+      && lastRun.includes('Invented later call.') && !lastRun.includes('I fix bikes'), lastRun);
+  await jobs.settleAll();
+  const revised = await result(again.out.draftId);
+  check('and comes back with what changed', revised.payload?.changed === 'Invented change.'
+    && revised.payload?.body === 'The problem\nRevised.', revised);
+  const second = await desk('POST', 'strategy', {
+    id: fresh, body: revised.payload.body, takeaways: '- Third point.', changed: revised.payload.changed, after: 1,
+  });
+  check('Save makes version 2', second.status === 201 && second.out.version === 2, second);
+  const view = (await desk('GET', `person&id=${fresh}`)).out.strategy;
+  check('the record shows version 2 live and version 1 in history',
+    view.live.version === 2 && view.live.changed === 'Invented change.'
+      && view.versions.length === 1 && view.versions[0].version === 1 && view.count === 2, view);
+  const [sealed] = await tagged`select body_encrypted from strategies where order_id = ${fresh} and version = 2`;
+  check('and it is stored sealed', !/Revised/.test(sealed.body_encrypted));
+}
+
+console.log('');
+console.log('the roadmap redraw reads the strategy');
+{
+  const road = await newOrder('RDRAFTROAD');
+  const [made] = await tagged`insert into cases (account_id) values ('acct-road') returning id`;
+  await tagged`update orders set case_id = ${Number(made.id)} where id = ${road}`;
+  await tagged`update strategies set case_id = ${Number(made.id)} where order_id = ${road}`;
+  await tagged`insert into plans (order_id, case_id, goal) values (${road}, ${Number(made.id)}, 'smallest')`;
+  statusAnswer = () => ({ status: 'COMPLETED', output: { content: 'Summary: Invented.' } });
+  const pressed = await desk('POST', 'roadmap-draft', { id: road });
+  check('its context carries the live strategy', pressed.status === 202 && lastRun.includes('Invented strategy.'), lastRun);
+  await jobs.settleAll();
 }
 
 console.log('');

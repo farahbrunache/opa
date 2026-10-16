@@ -301,7 +301,7 @@ function rowFacts(person, group) {
 
 function rowNext(person, group) {
   if (group === 'waiting') {
-    const said = person.callRead ? 'Next: decide go or no-go' : 'Next: read the call, then write next steps';
+    const said = person.hasStrategy ? 'Next: decide go or no-go' : 'Next: write the strategy';
     return [person.linked ? said : `${said} · No account linked`, ''];
   }
   if (group === 'replies') return [`Next: reply · ${waited(hoursSince(person.wroteAt)).toLowerCase()}`, ''];

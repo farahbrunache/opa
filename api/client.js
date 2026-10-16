@@ -109,7 +109,7 @@ async function link(req, res) {
   `;
   if (linked.length) {
     await sql()`update calls set chapter_id = chapter_now(${caseId}) where order_id = any(${linked}) and chapter_id is null`;
-    await sql()`update recaps set chapter_id = chapter_now(${caseId}) where order_id = any(${linked}) and chapter_id is null`;
+    await sql()`update strategies set case_id = ${caseId} where order_id = any(${linked}) and case_id is null`;
     await sql()`update call_gaps set chapter_id = chapter_now(${caseId}) where order_id = any(${linked}) and chapter_id is null`;
     for (const id of linked) await syncStepsFor(Number(id));
   }

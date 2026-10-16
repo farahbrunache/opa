@@ -1,6 +1,5 @@
 import { el, get, msg, weekday, minutes } from '/desk-ui.js';
 import { once } from '/desk-after.js';
-import { renderCallFields } from '/desk-callfields.js';
 import { renderGaps } from '/desk-gaps.js';
 import { chapterNumber, currentChapter, openPivot } from '/desk-chapters.js';
 
@@ -103,7 +102,6 @@ function panel(person, call) {
 
   wrap.append(renderGaps(person, call));
 
-  wrap.append(renderCallFields(person, call));
 
   const head = el('div', null, 'line');
   head.append(el('span', 'Transcript', 'label'), copyButton(call.transcript));

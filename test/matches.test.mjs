@@ -49,7 +49,7 @@ async function ask(action) {
 }
 
 let n = 0;
-async function newOrder({ account = null, decision = 'go', name = null, demo = false, fields = null,
+async function newOrder({ account = null, decision = 'go', name = null, demo = false, takeaways = null,
   words = 'Agent: Invented.\nCaller: Invented.' } = {}) {
   n += 1;
   const rows = await tagged`
@@ -65,10 +65,13 @@ async function newOrder({ account = null, decision = 'go', name = null, demo = f
     if (name) await tagged`update cases set name_encrypted = ${encrypt(name)} where id = ${caseId}`;
   }
   await tagged`
-    insert into calls (order_id, call_id, transcript_encrypted, summary_encrypted, fields_encrypted,
-                       started_at, ended_at)
-    values (${id}, ${'m-call-' + n}, ${encrypt(words)}, ${encrypt('Invented summary SUMMARYLEAK')},
-            ${fields ? encrypt(JSON.stringify(fields)) : null}, now(), now())`;
+    insert into calls (order_id, call_id, transcript_encrypted, summary_encrypted, started_at, ended_at)
+    values (${id}, ${'m-call-' + n}, ${encrypt(words)}, ${encrypt('Invented summary SUMMARYLEAK')}, now(), now())`;
+  if (takeaways) {
+    await tagged`insert into strategies (order_id, case_id, version, body_encrypted, takeaways_encrypted)
+                 select ${id}, case_id, 1, ${encrypt('STRATEGYBODY')}, ${encrypt(JSON.stringify(takeaways))}
+                   from orders where id = ${id}`;
+  }
   return id;
 }
 
@@ -139,26 +142,25 @@ console.log('');
 console.log('find matches');
 
 {
-  const blank = { rate: '', inTheWay: '', firstCustomer: '' };
   const me = await newOrder({ account: 'client-m-me', name: 'Invented Mesubject',
-    fields: { trade: 'Invented plumber', ...blank } });
+    takeaways: ['Invented plumber'] });
   const them = await newOrder({
     account: 'client-m-them', name: 'Zebulon Quixtrade',
     words: 'Agent: What do you do?\nCaller: TRANSCRIPTLEAK framing houses.',
-    fields: { trade: 'Invented carpenter', rate: 'Invented forty a job', inTheWay: '', firstCustomer: '' },
+    takeaways: ['Invented carpenter', 'Invented forty a job'],
   });
   await tagged`insert into messages (account_id, author, body_encrypted)
                values ('client-m-them', 'client', ${encrypt('MESSAGELEAK in their own words')})`;
   await tagged`insert into case_events (order_id, kind, detail_encrypted)
                values (${them}, 'note', ${encrypt('Invented owner note on them')})`;
   await newOrder({ demo: true, account: 'client-m-demo', name: 'Invented Demoperson',
-    fields: { trade: 'DEMOONLY welder', ...blank } });
-  const mine = await newOrder({ account: 'client-m-mine', fields: { trade: 'MINEONLY tester', ...blank } });
+    takeaways: ['DEMOONLY welder'] });
+  const mine = await newOrder({ account: 'client-m-mine', takeaways: ['MINEONLY tester'] });
   await tagged`update orders set is_mine = true where id = ${mine}`;
 
   const { messages, index, said, self } = await matchPrompt(me);
   const prompt = messages.map((m) => m.content).join('\n');
-  check("the owner's typed lines about another client go in",
+  check("the owner's strategy takeaways about another client go in",
     /Invented carpenter/.test(prompt) && /Invented forty a job/.test(prompt), prompt);
   check("and the owner's notes", /Invented owner note on them/.test(prompt), prompt);
   check('never their name', !/Zebulon|Quixtrade|Alder|Birch|Mesubject/.test(prompt), prompt);
@@ -175,20 +177,20 @@ console.log('find matches');
     back.length === 1 && back[0].orderId === them && back[0].name === 'Zebulon Quixtrade', back);
 
   check('the prompt fills in the count and the sources the model may pick from',
-    /Pick 5\. Sources: job title, call line,/.test(prompt), prompt);
+    /Pick 5\. Sources: job title, strategy,/.test(prompt), prompt);
   check("this person is named on a chip by first name, and it stays out of the prompt",
     self === 'Invented' && !/Mesubject/.test(prompt), self);
-  const [withChips] = readMatches(`${key}: Both build. | sources: this job title, them call line, `
+  const [withChips] = readMatches(`${key}: Both build. | sources: this job title, them strategy, `
     + 'them TRANSCRIPTLEAK framing houses, them Invented forty a job, them profile, this note, them skills', index, self);
   check('the chips are the fixed labels, with first names',
     JSON.stringify(withChips.sources) === JSON.stringify([
-      "Invented's job title", "Zebulon's call line", 'Your note on Invented', "Zebulon's skills",
+      "Invented's job title", "Zebulon's strategy", 'Your note on Invented', "Zebulon's skills",
     ]), withChips.sources);
   check("and never another client's material",
     !withChips.sources.some((c) => /TRANSCRIPTLEAK|forty|framing|Quixtrade/.test(c)), withChips.sources);
   check('the reason stops at the bar', withChips.reason === 'Both build.', withChips.reason);
   check('a Directory profile is named only as one',
-    JSON.stringify(readSources('them profile, them call line, this skills', { kind: 'directory', self: 'Invented' }))
+    JSON.stringify(readSources('them profile, them strategy, this skills', { kind: 'directory', self: 'Invented' }))
       === JSON.stringify(['Directory profile', "Invented's skills"]));
   check('no bar, no chips', readMatches(`${key}: Both build.`, index, self)[0].sources.length === 0);
 

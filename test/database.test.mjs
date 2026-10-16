@@ -14,6 +14,18 @@ try {
 }
 check('and running it a second time changes nothing', twice === null, twice);
 
+await tagged`create table recaps (id bigserial primary key)`;
+await tagged`alter table calls add column fields_encrypted text`;
+await tagged`alter table chapters add column fields_encrypted text`;
+db.useDatabase(tagged);
+await db.ensureSchema();
+const left = await tagged`
+  select table_name, column_name from information_schema.columns
+   where (table_name = 'recaps') or (column_name = 'fields_encrypted' and table_name in ('calls', 'chapters'))`;
+check('catch-ups and call lines are dropped from an older database', left.length === 0, left);
+const strategyTable = await tagged`select 1 from information_schema.tables where table_name = 'strategies'`;
+check('and the strategy table is there', strategyTable.length === 1);
+
 const { abandonCall, aCallCameBack, keepRecord, reconcileStarts, secondsSpent } =
   await import('../lib/calls.js');
 const sql = () => tagged;

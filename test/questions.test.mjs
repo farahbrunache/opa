@@ -256,21 +256,22 @@ check('one for reading the call', reading.status === 201, reading);
   const first = await newOrder({ account: 'client-q-notes', decision: 'go' });
   const second = await newOrder({ account: 'client-q-notes' });
   const stranger = await newOrder({ account: 'client-q-stranger', decision: 'go' });
-  const call = (order, words, fields, hours) => tagged`
-    insert into calls (order_id, call_id, kind, transcript_encrypted, fields_encrypted, started_at, ended_at)
+  const call = (order, words, hours) => tagged`
+    insert into calls (order_id, call_id, kind, transcript_encrypted, started_at, ended_at)
     values (${order}, ${'q-notes-' + order}, 'intake', ${encrypt(words)},
-            ${fields ? encrypt(JSON.stringify(fields)) : null},
             now() - (${hours} || ' hours')::interval, now() - (${hours} || ' hours')::interval)`;
-  await call(first, 'Agent: What do you do?\nUser: Invented FIRSTCALL welding.',
-    { trade: 'Invented welder', rate: 'Invented sixty', inTheWay: '', firstCustomer: '' }, 48);
-  await call(second, 'Agent: Anything new?\nUser: Invented SECONDCALL a van.', null, 2);
-  await call(stranger, 'Agent: Hi.\nUser: STRANGERLEAK somebody else.', null, 1);
+  await call(first, 'Agent: What do you do?\nUser: Invented FIRSTCALL welding.', 48);
+  await call(second, 'Agent: Anything new?\nUser: Invented SECONDCALL a van.', 2);
+  await call(stranger, 'Agent: Hi.\nUser: STRANGERLEAK somebody else.', 1);
+  await tagged`insert into strategies (order_id, case_id, version, body_encrypted, takeaways_encrypted)
+               select ${first}, case_id, 1, ${encrypt('Invented welding plan.')}, ${encrypt(JSON.stringify(['Invented sixty']))}
+                 from orders where id = ${first}`;
   const { calls, notes } = await questionNotes(second);
   const text = notes.join('\n');
   check('both calls of the person go in, newest first',
     calls === 2 && text.indexOf('SECONDCALL') < text.indexOf('FIRSTCALL') && text.includes('FIRSTCALL'), text);
-  check('with the four lines and the decision',
-    /Job title: Invented welder/.test(text) && /Rate: Invented sixty/.test(text) && /Decision: go/.test(text), text);
+  check('with the live strategy and the decision',
+    /Invented welding plan\./.test(text) && /- Invented sixty/.test(text) && /Decision: go/.test(text), text);
   check("and nothing from anybody else's call", !/STRANGERLEAK/.test(text), text);
 }
 

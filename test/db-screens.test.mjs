@@ -157,6 +157,8 @@ const { costsNow } = await import('../lib/costs.js');
 const drafted = await newOrder();
 await tagged`insert into calls (order_id, call_id, transcript_encrypted)
              values (${drafted}, ${'c-draft-' + drafted}, ${seal('Caller: I drive.')})`;
+await tagged`insert into strategies (order_id, version, body_encrypted, takeaways_encrypted)
+             values (${drafted}, 1, ${seal('Invented strategy.')}, ${seal('[]')})`;
 
 let submitted = 0;
 let polled = null;

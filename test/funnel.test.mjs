@@ -141,7 +141,7 @@ check('an activity done is not the last row by itself', row(data, 'done').count 
 async function press(payload) {
   const stream = Readable.from([JSON.stringify(payload)]);
   const req = {
-    method: 'POST', url: '/api/desk?action=recommendation-done',
+    method: 'POST', url: '/api/desk?action=recommend',
     headers: { cookie: cookie(), 'content-type': 'application/json' },
   };
   Object.assign(req, { [Symbol.asyncIterator]: stream[Symbol.asyncIterator].bind(stream) });
@@ -153,16 +153,13 @@ async function press(payload) {
     return error.status || 500;
   }
 }
-check('pressing the button is accepted', (await press({ id: Number(thirdOrder.id) })) === 200);
+check('sending next steps is accepted', (await press({ id: Number(thirdOrder.id), body: 'Invented steps.' })) === 201);
 data = await read();
-check('and it is the last row', row(data, 'done').count === 3, keys(data));
-check('it can be taken back', (await press({ id: Number(thirdOrder.id), done: false })) === 200);
-data = await read();
-check('and the row drops again', row(data, 'done').count === 2, keys(data));
-await press({ id: Number(thirdOrder.id) });
-const trail = await tagged`select kind from case_events where order_id = ${thirdOrder.id}`;
-check('each press lands on the trail',
-  trail.filter((e) => e.kind === 'recommendation-done').length === 3, trail);
+check('and it makes the last row on its own', row(data, 'done').count === 3, keys(data));
+const [stamped] = await tagged`select recommendation_done_at from orders where id = ${thirdOrder.id}`;
+await press({ id: Number(thirdOrder.id), body: 'Invented steps, again.' });
+const [still] = await tagged`select recommendation_done_at from orders where id = ${thirdOrder.id}`;
+check('sending again keeps the first time', String(stamped.recommendation_done_at) === String(still.recommendation_done_at));
 
 const second = await tagged`
   insert into orders (claim_token_hash, card_code_hash, card_amount_cents, payment_method,

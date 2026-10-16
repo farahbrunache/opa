@@ -55,7 +55,6 @@ await tagged`update orders set case_id = ${caseId} where id = ${second}`;
 const redo = await called(second, 'Agent: What do you do?\nCaller: I want to teach baking instead.');
 const [draft] = await tagged`
   insert into drafts (order_id, slot, model) values (${second}, 'a', 'test-model') returning id`;
-await tagged`insert into recaps (draft_id, order_id, content_encrypted) values (${draft.id}, ${second}, ${encrypt('Recap.')})`;
 await tagged`
   insert into call_gaps (draft_id, order_id, call_id, content_encrypted)
   values (${draft.id}, ${second}, ${redo.id}, ${encrypt('Gaps.')})`;
@@ -84,8 +83,6 @@ check('the chapter says which call it came from', Number(two.fromCallId) === Num
 check('and is recorded as theirs', two.startedBy === 'them');
 const [moved] = await tagged`select chapter_id from calls where id = ${redo.id}`;
 check('the call moves into the new chapter', String(moved.chapter_id) === String(two.id));
-const [recap] = await tagged`select chapter_id from recaps where order_id = ${second}`;
-check('so does its recap', String(recap.chapter_id) === String(two.id));
 const [gap] = await tagged`select chapter_id from call_gaps where call_id = ${redo.id}`;
 check('and its gaps', String(gap.chapter_id) === String(two.id));
 check('the earlier call stays in Chapter 1',

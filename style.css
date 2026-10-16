@@ -1898,6 +1898,7 @@ input.code-field::placeholder {
   border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink);
   font: inherit; letter-spacing: 0; text-align: left; text-transform: none; cursor: pointer;
 }
+#record a.chap { text-decoration: none; }
 #record .chap b, #record .chap small { letter-spacing: 0; text-transform: none; }
 #record .chap b { font-family: var(--font-serif); font-size: 1.05rem; font-weight: 600; line-height: 1.2; }
 #record .chap small { color: var(--muted); font-size: 0.78rem; }

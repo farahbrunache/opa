@@ -46,7 +46,7 @@ function changeRow(person, draft, change, index) {
     };
     title.addEventListener('input', fit);
     li.append(title);
-    requestAnimationFrame(fit);
+    setTimeout(fit);
   } else {
     li.append(el('span', change.title, 'atext'));
   }

@@ -290,6 +290,19 @@ console.log('the roadmap redraw reads the strategy');
   const pressed = await desk('POST', 'roadmap-draft', { id: road });
   check('its context carries the live strategy', pressed.status === 202 && lastRun.includes('Invented strategy.'), lastRun);
   await jobs.settleAll();
+
+  await tagged`insert into activities (case_id, title_encrypted, state) values (${Number(made.id)}, ${encrypt('Invent a sample flyer for the market')}, 'done')`;
+  await desk('POST', 'note', { id: road, note: 'Invented private note.' });
+  statusAnswer = () => ({ status: 'COMPLETED', output: { content:
+    'Summary: Invented.\nADD: Invent the sample flyers for a market | repeat\nADD: Invented brand new step | fresh' } });
+  const again = await desk('POST', 'roadmap-draft', { id: road });
+  check('the redraw context carries notes and earlier proposals',
+    again.status === 202 && lastRun.includes('Invented private note.') && lastRun.includes('Everything proposed before'), lastRun);
+  await jobs.settleAll();
+  const [kept] = await tagged`select content_encrypted from roadmap_drafts where order_id = ${road} order by id desc limit 1`;
+  const titles = JSON.parse(decrypt(kept.content_encrypted)).changes.map((c) => c.title);
+  check('a proposal repeating a done activity is dropped and a new one kept',
+    titles.length === 1 && titles[0] === 'Invented brand new step', titles);
 }
 
 console.log('');

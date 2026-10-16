@@ -100,6 +100,7 @@ function renderWhose(person) {
   actions.textContent = '';
   said.hidden = true;
   confirm.hidden = true;
+  document.getElementById('whosebox').hidden = Boolean(person.isDemo || person.isMine);
   if (person.isDemo || person.isMine) {
     why.textContent = person.isDemo ? 'Demo' : 'Yours';
     if (person.isMine) {

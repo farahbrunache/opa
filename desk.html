@@ -145,21 +145,6 @@
       <div class="pmeta" id="called"></div>
       <a class="btn ghost small" id="seeas" href="/preview"></a>
     </header>
-    <div class="box" id="headbox">
-      <div class="stack" id="minebox">
-        <div class="line"><span class="label">Whose session is this</span><span class="faint" id="minewhy"></span></div>
-        <p class="faint" id="minesaid" hidden></p>
-        <div class="pair" id="mine"></div>
-        <div class="stack" id="mineconfirm" hidden>
-          <p class="title" id="mineask"></p>
-          <div class="pair">
-            <button type="button" class="btn primary" id="mineyes">Yes, it's mine</button>
-            <button type="button" class="btn ghost" id="mineno">Cancel</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <div class="chapters" id="chapters" role="group" aria-label="Chapters" hidden></div>
     <div class="histbar" id="histbar" hidden>
       <span id="histsaid"></span>
@@ -465,6 +450,21 @@
       <div class="chips" id="logf" role="group" aria-label="Show"></div>
       <ul class="log" id="events"></ul>
     </section>
+
+    <div class="box" id="whosebox">
+      <div class="stack" id="minebox">
+        <div class="line"><span class="label">Whose session is this</span><span class="faint" id="minewhy"></span></div>
+        <p class="faint" id="minesaid" hidden></p>
+        <div class="pair" id="mine"></div>
+        <div class="stack" id="mineconfirm" hidden>
+          <p class="title" id="mineask"></p>
+          <div class="pair">
+            <button type="button" class="btn primary" id="mineyes">Yes, it's mine</button>
+            <button type="button" class="btn ghost" id="mineno">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
 </main>

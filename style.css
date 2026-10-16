@@ -1720,7 +1720,9 @@ input.code-field::placeholder {
 #roadmap .rmchange { display: grid; gap: 0.375rem; padding-top: 0.625rem; border-top: 1px solid var(--ai-line); }
 #roadmap .rmchange:first-child { padding-top: 0; border-top: 0; }
 #roadmap .rmchange.done { opacity: 0.6; }
-#roadmap .rmchange input { width: 100%; }
+#roadmap, #roadmap .rmlist, #roadmap .rmchange, #roadmap .rmchange > * { min-width: 0; }
+#roadmap .rmchange textarea { width: 100%; min-height: 0; box-sizing: border-box; resize: vertical; overflow: hidden; }
+#roadmap .rmchange .atext, #roadmap .rmchange .why { overflow-wrap: anywhere; }
 #record .mstitle { font-size: 1.02rem; font-weight: 600; overflow-wrap: anywhere; }
 #record .rmgroup { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; margin: 1.1rem 0 0.4rem; font: 700 0.72rem var(--font-label); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 #record .rmgroup span { font-weight: 600; letter-spacing: 0.02em; text-transform: none; color: var(--faint); text-align: right; }

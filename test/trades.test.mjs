@@ -52,7 +52,7 @@ process.env.TAXONOMY_TOKEN = 'onepercent.invented';
 const copied = await call(sweep, 'POST', '/api/sweep?action=trades', {}, { authorization: 'Bearer invented-sweep-secret' });
 check('the daily job copies it', copied.status === 200 && copied.out.titles === 3, copied);
 check('from the hierarchy route, with the name.secret credential',
-  sent.url === 'https://app.chargingthefuture.com/api/skills-taxonomy/hierarchy' && sent.authorization === 'Bearer onepercent.invented', sent);
+  sent.url === 'https://app.lagatos.com/api/skills-taxonomy/hierarchy' && sent.authorization === 'Bearer onepercent.invented', sent);
 titles = titles.slice(0, 2);
 const again = await call(desk, 'POST', '/api/desk?action=trades-copy', {});
 check('copying by hand works too, and a title gone from their list is retired', again.out.retired === 1, again);

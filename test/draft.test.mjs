@@ -99,7 +99,7 @@ console.log('the shape a sheet is written in');
 const sheet = await import('../lib/sheet.js');
 
 check('every link in the list is an address', sheet.SHEET_LINKS.every(
-  ([name, href]) => name && /^https:\/\/app\.chargingthefuture\.com\/\S+$/.test(href)),
+  ([name, href]) => name && /^https:\/\/app\.lagatos\.com\/\S+$/.test(href)),
   sheet.SHEET_LINKS);
 
 check('an untouched template is all unfilled',
@@ -112,16 +112,16 @@ check('nothing at all counts as nothing',
   sheet.unfilledSlots(null) === 0 && sheet.unfilledSlots('') === 0);
 
 check('an address becomes a link and keeps its words',
-  JSON.stringify(sheet.linkParts('Go to https://app.chargingthefuture.com/apps/directory'))
+  JSON.stringify(sheet.linkParts('Go to https://app.lagatos.com/apps/directory'))
   === JSON.stringify([
     { text: 'Go to ' },
-    { text: 'https://app.chargingthefuture.com/apps/directory',
-      href: 'https://app.chargingthefuture.com/apps/directory' },
-  ]), sheet.linkParts('Go to https://app.chargingthefuture.com/apps/directory'));
+    { text: 'https://app.lagatos.com/apps/directory',
+      href: 'https://app.lagatos.com/apps/directory' },
+  ]), sheet.linkParts('Go to https://app.lagatos.com/apps/directory'));
 
-const ended = sheet.linkParts('Post it at https://app.chargingthefuture.com/apps/skills-hunt.');
+const ended = sheet.linkParts('Post it at https://app.lagatos.com/apps/skills-hunt.');
 check('a sentence ending on an address keeps its period out of the link',
-  ended[1].href === 'https://app.chargingthefuture.com/apps/skills-hunt' && ended[2].text === '.',
+  ended[1].href === 'https://app.lagatos.com/apps/skills-hunt' && ended[2].text === '.',
   ended);
 
 check('two addresses in one line both come back',

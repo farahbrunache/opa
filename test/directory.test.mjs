@@ -123,7 +123,7 @@ answer(200, { profile });
   const read = await ask(`action=directory-profile&id=${id}&contact=${contact}`);
   check('a claimed profile is passed through', read.status === 200 && read.out.profile.lastName === 'Tiler', read);
   check('it asks the one profile, by id, with the credential',
-    asked.url === 'https://app.chargingthefuture.com/api/directory/service/profiles/invented-7'
+    asked.url === 'https://app.lagatos.com/api/directory/service/profiles/invented-7'
       && asked.options.headers.authorization === 'Bearer one-percent.an-invented-secret', asked);
   const [after] = await tagged`select name_encrypted, where_encrypted, why_encrypted from contacts where id = ${contact}`;
   check('nothing it said is written down', decrypt(after.name_encrypted) === '' && !after.where_encrypted && !after.why_encrypted);

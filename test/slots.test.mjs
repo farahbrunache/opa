@@ -44,6 +44,13 @@ globalThis.fetch = async (address, init = {}) => {
     endpoints.push(made);
     return reply(200, made);
   }
+  if (url.startsWith('https://rest.runpod.io/v1/endpoints/') && init.method === 'PATCH') {
+    const id = decodeURIComponent(url.split('/endpoints/')[1]);
+    const found = endpoints.find((e) => e.id === id);
+    if (!found) return reply(404, { error: 'no endpoint' });
+    found.workersMax = JSON.parse(init.body).workersMax;
+    return reply(200, found);
+  }
   if (url.endsWith('/health')) return reply(200, { workers: { ready: 0 }, jobs: {} });
   return reply(404, {});
 };
@@ -73,6 +80,18 @@ page = (await ask('GET', 'ai-check')).out;
 check('and shows it, set up, with its model', page.slots[0].set && page.slots[0].name === 'llama3.2' && page.slots[0].endpointId === 'ep-small', page.slots[0]);
 check('every button now runs on it, the others not being set up',
   (await drafts.familiesNow()).every((b) => b.inUse === 'A'));
+
+console.log('turning an endpoint off and on');
+check('a slot with no endpoint has nothing to turn off', (await ask('POST', 'slot-power', { slot: 'C', on: false })).status === 409);
+check('on or off has to be said', (await ask('POST', 'slot-power', { slot: 'A' })).status === 400);
+const off = await ask('POST', 'slot-power', { slot: 'A', on: false });
+const patch = sent.findLast((s) => s.method === 'PATCH');
+check('off sets the slot endpoint to 0 max workers', off.status === 200 && off.out.workersMax === 0
+  && patch.url === 'https://rest.runpod.io/v1/endpoints/ep-small' && patch.body.workersMax === 0, { off: off.out, patch });
+check('the page shows it off', (await ask('GET', 'ai-check')).out.endpoints.list[0].workersMax === 0);
+const on = await ask('POST', 'slot-power', { slot: 'A', on: true });
+check('on sets it back to 1', on.status === 200 && sent.findLast((s) => s.method === 'PATCH').body.workersMax === 1, on.out);
+check('the other endpoint on the account is never touched', !sent.some((s) => s.method === 'PATCH' && s.url.endsWith('ep-other')));
 
 console.log('adding a model');
 check('a name Ollama would not take is refused', (await ask('POST', 'model-add', { slot: 'B', gpu: '24', model: 'not a model!' })).status === 400);

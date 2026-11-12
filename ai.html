@@ -142,6 +142,29 @@
     return box;
   }
 
+  function powerSwitch(slot, endpoints) {
+    const endpoint = endpoints.find((e) => e.id === slot.endpointId);
+    if (!endpoint || endpoint.workersMax === null) return null;
+    const on = endpoint.workersMax > 0;
+    const box = el('div', null, 'slotpick');
+    box.append(el('span', on ? `On · up to ${endpoint.workersMax} worker${endpoint.workersMax === 1 ? '' : 's'}` : 'Off · 0 max workers',
+      on ? 'power' : 'power off'));
+    const flip = el('button', on ? 'Turn off' : 'Turn on', 'btn ghost small');
+    flip.type = 'button';
+    flip.addEventListener('click', async () => {
+      flip.disabled = true;
+      try {
+        await post('slot-power', { slot: slot.slot, on: !on });
+        await draw();
+      } catch (error) {
+        flip.disabled = false;
+        msg('msg', error.message, 'bad');
+      }
+    });
+    box.append(flip);
+    return box;
+  }
+
   function drawSlots(data) {
     const list = document.getElementById('slots');
     list.textContent = '';
@@ -150,7 +173,11 @@
       const item = row(`Slot ${slot.slot} · ${slot.tier}`, slot.set ? slot.name : '',
         [said, rate(slot.perSecond)].filter(Boolean).join(' · '), tone);
       if (slot.warmth) item.append(el('p', slot.warmth.verdict.text, `warmth ${slot.warmth.verdict.tone}`));
-      if (data.keySet && !data.endpoints.said) item.append(endpointPicker(slot, data.endpoints.list));
+      if (data.keySet && !data.endpoints.said) {
+        const power = slot.set ? powerSwitch(slot, data.endpoints.list) : null;
+        if (power) item.append(power);
+        item.append(endpointPicker(slot, data.endpoints.list));
+      }
       list.append(item);
     }
     const set = data.slots.filter((s) => s.set).length;

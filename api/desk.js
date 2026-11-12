@@ -11,7 +11,7 @@ import { orderId, record } from '../lib/desk-events.js';
 
 import { introduce, recordIntroduction } from '../lib/desk-introductions.js';
 import { chooseModel, writeDraft } from '../lib/desk-drafts.js';
-import { addModel, aiCheck, aiCheckSave, setSlot } from '../lib/desk-ai.js';
+import { addModel, aiCheck, aiCheckSave, powerSlot, setSlot } from '../lib/desk-ai.js';
 import { draftResult, markUsed } from '../lib/draft-jobs.js';
 import { setPlan } from '../lib/desk-plan.js';
 import {
@@ -250,6 +250,7 @@ const ACTIONS = {
     'call-gaps': findGaps,
     'ai-check-save': aiCheckSave,
     'slot-set': setSlot,
+    'slot-power': powerSlot,
     'model-add': addModel,
     'question-add': addQuestion,
     'question-edit': editQuestion,

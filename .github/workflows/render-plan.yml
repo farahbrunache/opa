@@ -1,0 +1,38 @@
+name: Render plan
+
+on:
+  workflow_dispatch:
+    inputs:
+      plan:
+        description: Instance type
+        required: true
+        type: choice
+        options: [free, starter]
+
+jobs:
+  plan:
+    name: Set the instance type
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Set
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          NAME: one-percent-app
+          PLAN: ${{ inputs.plan }}
+        run: |
+          set -euo pipefail
+          [ -n "$RENDER_API_KEY" ] || { echo "::error title=RENDER_API_KEY is not set::"; exit 1; }
+          id=$(curl -sS -f -H "Authorization: Bearer $RENDER_API_KEY" \
+            "https://api.render.com/v1/services?name=${NAME}&limit=100" \
+            | jq -r --arg n "$NAME" 'map(.service) | map(select(.name == $n)) | .[0].id // empty')
+          [ -n "$id" ] || { echo "::error title=No Render service named ${NAME}::"; exit 1; }
+          answer=$(curl -sS --fail-with-body -X PATCH \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg p "$PLAN" '{serviceDetails: {plan: $p}}')" \
+            "https://api.render.com/v1/services/${id}") || {
+            echo "::error title=Render refused the change::It answered: $answer"; exit 1; }
+          now=$(printf '%s' "$answer" | jq -r '.serviceDetails.plan // "unknown"')
+          echo "Instance type is now: $now"
+          [ "$now" = "$PLAN" ] || { echo "::error title=Plan did not change::Render reports $now."; exit 1; }

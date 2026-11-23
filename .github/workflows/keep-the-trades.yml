@@ -15,7 +15,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Is the app on?
+        id: on
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          set -euo pipefail
+          id=$(curl -sS -f -H "Authorization: Bearer $RENDER_API_KEY" \
+            "https://api.render.com/v1/services?name=one-percent-app&limit=100" \
+            | jq -r 'map(.service) | map(select(.name == "one-percent-app")) | .[0].id // empty')
+          state=$(curl -sS -f -H "Authorization: Bearer $RENDER_API_KEY" \
+            "https://api.render.com/v1/services/${id}" | jq -r '.suspended')
+          if [ "$state" = suspended ]; then echo "on=no" >> "$GITHUB_OUTPUT"; echo "App is off; skipped."; else echo "on=yes" >> "$GITHUB_OUTPUT"; fi
+
       - name: Copy
+        if: steps.on.outputs.on == 'yes'
         env:
           APP_URL: https://app.farahbrunache.com
           SWEEP_SECRET: ${{ secrets.SWEEP_SECRET }}

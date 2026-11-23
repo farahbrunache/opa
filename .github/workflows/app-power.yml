@@ -1,0 +1,27 @@
+name: App on or off
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Turn the app
+        required: true
+        type: choice
+        options: ['off', 'on']
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  power:
+    name: Turn the app ${{ inputs.action }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_NAME: one-percent-app
+          ACTION: ${{ inputs.action }}
+        run: bash .github/scripts/power.sh

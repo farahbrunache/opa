@@ -88,6 +88,12 @@ else
   echo "Leaving the settings on Render as they are."
 fi
 
+if [ "$(curl -sS -f -H "Authorization: Bearer $RENDER_API_KEY" \
+  "https://api.render.com/v1/services/${id}" | jq -r '.suspended')" = suspended ]; then
+  echo "::notice title=App is off::Not deployed. Turning it on deploys the latest."
+  exit 0
+fi
+
 echo "Asking Render to deploy…"
 curl -sS --fail-with-body -X POST \
   -H "Authorization: Bearer $RENDER_API_KEY" \
